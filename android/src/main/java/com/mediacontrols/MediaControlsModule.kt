@@ -1,20 +1,187 @@
 package com.mediacontrols
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
+import androidx.media3.common.util.UnstableApi
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.module.annotations.ReactModule
+import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.mediacontrols.MediaControlsService.Companion
 
 @ReactModule(name = MediaControlsModule.NAME)
+@UnstableApi
 class MediaControlsModule(reactContext: ReactApplicationContext) :
   NativeMediaControlsSpec(reactContext) {
+
+  private var mediaService: MediaControlsService? = null
+  private var serviceBound = false
+  private var serviceInitialized = false // Flag to track if service has been initialized
+
+  private val serviceConnection = object : ServiceConnection {
+    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+      val binder = service as? MediaControlsService.LocalBinder
+      mediaService = binder?.getService()
+      serviceBound = true
+    }
+
+    override fun onServiceDisconnected(name: ComponentName?) {
+      mediaService = null
+      serviceBound = false
+    }
+  }
+
+  init {
+    // Set react context for the service, but don't start it yet
+    MediaControlsService.reactContext = reactContext
+    MediaControlsService.player = MediaControlsPlayer(reactContext, this)
+  }
 
   override fun getName(): String {
     return NAME
   }
 
-  // Example method
-  // See https://reactnative.dev/docs/native-modules-android
-  override fun multiply(a: Double, b: Double): Double {
-    return a * b
+  @ReactMethod
+  override fun setControlEnabled(name: String, enabled: Boolean) {
+    MediaControlsService.player?.setControlEnabled(name, enabled)
+  }
+
+  @ReactMethod
+  override fun updateMetadata(metadata: ReadableMap, promise: Promise) {
+    try {
+      // Start service on first updateMetadata call
+      ensureServiceStarted()
+
+      val trackMetadata = MediaTrackMetadata(
+        title = metadata.getString("title") ?: "",
+        artist = metadata.getString("artist") ?: "",
+        album = metadata.getString("album"),
+        duration = if (metadata.hasKey("duration")) metadata.getDouble("duration") else null,
+        artwork = metadata.getString("artwork"),
+        position = if (metadata.hasKey("position")) metadata.getDouble("position") else null,
+        isPlaying = if (metadata.hasKey("isPlaying")) metadata.getBoolean("isPlaying") else null
+      )
+
+      MediaControlsService.player?.updateMetadata(trackMetadata)
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("UPDATE_METADATA_ERROR", "Failed to update metadata: ${e.message}", e)
+    }
+  }
+
+  @ReactMethod
+  override fun stopMediaNotification(promise: Promise) {
+    try {
+      stopMediaService()
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("STOP_NOTIFICATION_ERROR", "Failed to stop notification: ${e.message}", e)
+    }
+  }
+
+  @ReactMethod
+  override fun enableAudioInterruption(enabled: Boolean, promise: Promise) {
+    try {
+      MediaControlsService.player?.setAudioInterruptionEnabled(enabled)
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("AUDIO_INTERRUPTION_ERROR", "Failed to enable audio interruption: ${e.message}", e)
+    }
+  }
+
+  @ReactMethod
+  fun getControlsEnabled(promise: Promise) {
+    try {
+      ensureServiceStarted()
+      val player = MediaControlsService.player
+      val controls = mapOf(
+        "play" to (player?.isControlEnabled("play") ?: false),
+        "pause" to (player?.isControlEnabled("pause") ?: false),
+        "stop" to (player?.isControlEnabled("stop") ?: false),
+        "next" to (player?.isControlEnabled("next") ?: false),
+        "previous" to (player?.isControlEnabled("previous") ?: false),
+        "seek" to (player?.isControlEnabled("seek") ?: false)
+      )
+
+      val result = Arguments.createMap()
+      controls.forEach { (key, value) ->
+        result.putBoolean(key, value)
+      }
+      promise.resolve(result)
+    } catch (e: Exception) {
+      promise.reject("GET_CONTROLS_ERROR", "Failed to get controls state: ${e.message}", e)
+    }
+  }
+
+  @ReactMethod
+  fun getCurrentPlayerState(promise: Promise) {
+    try {
+      ensureServiceStarted()
+      val player = MediaControlsService.player
+      val result = Arguments.createMap()
+
+      if (player != null) {
+        result.putBoolean("isPlaying", player.isPlaying)
+        result.putBoolean("playWhenReady", player.playWhenReady)
+        result.putInt("playbackState", player.playbackState)
+        result.putString("currentTitle", player.mediaMetadata.title?.toString() ?: "Unknown")
+      } else {
+        result.putBoolean("isPlaying", false)
+        result.putString("error", "Player not available")
+      }
+
+      promise.resolve(result)
+    } catch (e: Exception) {
+      promise.reject("GET_PLAYER_STATE_ERROR", "Failed to get player state: ${e.message}", e)
+    }
+  }
+
+  private fun ensureServiceStarted() {
+    if (!serviceInitialized) {
+      startMediaService()
+      serviceInitialized = true
+    }
+  }
+
+  fun sendEvent(eventName: String, position: Int?) {
+    val eventData = Arguments.createMap().apply {
+        putString("command", eventName)
+        position?.let {
+          putInt("seekPosition", it)
+        }
+    }
+    emitOnEvent(eventData)
+  }
+
+  private fun startMediaService() {
+    val intent = Intent(reactApplicationContext, MediaControlsService::class.java)
+    reactApplicationContext.startService(intent)
+    reactApplicationContext.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+  }
+
+  private fun stopMediaService() {
+    mediaService?.stopNotificationAndService()
+
+    if (serviceBound) {
+      reactApplicationContext.unbindService(serviceConnection)
+      serviceBound = false
+    }
+
+    val intent = Intent(reactApplicationContext, MediaControlsService::class.java)
+    reactApplicationContext.stopService(intent)
+    serviceInitialized = false
+    mediaService = null
+  }
+
+  override fun invalidate() {
+    super.invalidate()
+    stopMediaService()
   }
 
   companion object {

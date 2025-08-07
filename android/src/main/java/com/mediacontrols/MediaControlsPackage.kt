@@ -1,5 +1,6 @@
 package com.mediacontrols
 
+import androidx.media3.common.util.UnstableApi
 import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
@@ -8,7 +9,8 @@ import com.facebook.react.module.model.ReactModuleInfoProvider
 import java.util.HashMap
 
 class MediaControlsPackage : BaseReactPackage() {
-  override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
+    @UnstableApi
+    override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
     return if (name == MediaControlsModule.NAME) {
       MediaControlsModule(reactContext)
     } else {
@@ -16,7 +18,8 @@ class MediaControlsPackage : BaseReactPackage() {
     }
   }
 
-  override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
+    @UnstableApi
+    override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
     return ReactModuleInfoProvider {
       val moduleInfos: MutableMap<String, ReactModuleInfo> = HashMap()
       moduleInfos[MediaControlsModule.NAME] = ReactModuleInfo(
