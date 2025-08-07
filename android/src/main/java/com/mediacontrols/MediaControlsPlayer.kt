@@ -192,20 +192,6 @@ class MediaControlsPlayer(
             .build()
 
         updateState { builder ->
-            // Ensure all necessary commands are available
-            val availableCommands = Player.Commands.Builder()
-                .addAll(
-                    Player.COMMAND_PLAY_PAUSE,
-                    Player.COMMAND_STOP,
-                    Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
-                    Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-                    Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
-                    Player.COMMAND_PREPARE,
-                    Player.COMMAND_GET_CURRENT_MEDIA_ITEM,
-                    Player.COMMAND_GET_METADATA
-                )
-                .build()
-
             builder.setPlaylist(listOf(mediaItemData))
                 .setCurrentMediaItemIndex(0)
                 .setContentPositionMs(metadata.position?.times(1000)?.toLong() ?: 0)
@@ -216,7 +202,7 @@ class MediaControlsPlayer(
                 .setPlaybackState(
                     if (metadata.isPlaying == true) Player.STATE_READY else Player.STATE_IDLE
                 )
-                .setAvailableCommands(availableCommands)
+                .setAvailableCommands(state.availableCommands)
         }
     }
 
