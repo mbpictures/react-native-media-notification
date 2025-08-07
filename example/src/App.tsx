@@ -150,7 +150,6 @@ export default function App() {
   const togglePlayPause = () => {
     const track = tracks[currentTrack];
     if (track) {
-      console.log(track);
       MediaControls.updateMetadata({
         title: track.title,
         artist: track.artist,
