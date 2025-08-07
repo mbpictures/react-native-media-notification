@@ -211,12 +211,15 @@ class MediaControlsPlayer(
 
         // Update available commands based on enabled controls
         val availableCommands = mutableSetOf<Int>().apply {
-            if (enabledControls["play"] == true) add(Player.COMMAND_PLAY_PAUSE)
-            if (enabledControls["pause"] == true) add(Player.COMMAND_PLAY_PAUSE)
+            if (enabledControls["play"] == true || enabledControls["pause"] == true) add(Player.COMMAND_PLAY_PAUSE)
             if (enabledControls["stop"] == true) add(Player.COMMAND_STOP)
             if (enabledControls["next"] == true) add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
             if (enabledControls["previous"] == true) add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
             if (enabledControls["seek"] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+
+            add(Player.COMMAND_PREPARE)
+            add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+            add(Player.COMMAND_GET_METADATA)
         }
 
         updateState { builder ->
