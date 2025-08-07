@@ -125,7 +125,7 @@ export default function App() {
       seekForwardListener.remove();
       seekBackwardListener.remove();
     };
-  }, []);
+  }, [isPlaying]);
 
   // Simuliere Playback Progress
   useEffect(() => {
