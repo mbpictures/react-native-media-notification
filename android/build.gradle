@@ -74,6 +74,12 @@ def kotlin_version = getExtOrDefault("kotlinVersion")
 dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+  // androidx Media3 dependencies
+  implementation "androidx.media3:media3-session:1.8.0"
+  implementation "androidx.media3:media3-common:1.8.0"
+  implementation "androidx.media3:media3-ui:1.8.0"
+  implementation "androidx.core:core-ktx:1.16.0"
 }
 
 react {
