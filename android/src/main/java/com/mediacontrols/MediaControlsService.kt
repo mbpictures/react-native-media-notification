@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.IBinder
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.os.bundleOf
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
@@ -100,6 +101,12 @@ class MediaControlsService : MediaSessionService() {
             .setContentText(player.mediaMetadata.artist ?: "Unknown Artist")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
+            .setExtras(
+                bundleOf(
+                    // Required for Live Notifications & Now Bar
+                    "android.ongoingActivityNoti.style" to 1
+                )
+            )
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         // Sammle nur aktivierte Actions

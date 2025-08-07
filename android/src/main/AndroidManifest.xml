@@ -15,6 +15,10 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <meta-data
+            android:name="com.samsung.android.support.ongoing_activity"
+            android:value="true" />
     </application>
 
 </manifest>
