@@ -32,7 +32,6 @@ class MediaControlsService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private val binder = LocalBinder()
     private var mediaController: MediaController? = null
-    private var hasMetadata = false
 
     companion object {
         private const val NOTIFICATION_ID = 123
@@ -255,7 +254,7 @@ class MediaControlsService : MediaSessionService() {
             }
             "rewind" -> {
                 if (player?.isControlEnabled("seek") == true) {
-                    val currentPosition = player.currentPosition ?: 0
+                    val currentPosition = player.currentPosition
                     val newPosition = (currentPosition - 10000).coerceAtLeast(0)
                     player.seekTo(newPosition)
                     module?.sendEvent("seekBackward", (newPosition / 1000).toInt())
@@ -263,8 +262,8 @@ class MediaControlsService : MediaSessionService() {
             }
             "fast_forward" -> {
                 if (player?.isControlEnabled("seek") == true) {
-                    val currentPosition = player.currentPosition ?: 0
-                    val duration = player.duration ?: 0
+                    val currentPosition = player.currentPosition
+                    val duration = player.duration
                     val newPosition = (currentPosition + 10000).coerceAtMost(duration)
                     player.seekTo(newPosition)
                     module?.sendEvent("seekForward", (newPosition / 1000).toInt())
@@ -313,12 +312,6 @@ class MediaControlsService : MediaSessionService() {
     }
 
     fun getPlayer(): MediaControlsPlayer? = player
-
-    // Neue Methode um Notification zu starten wenn Metadaten gesetzt werden
-    fun showNotificationWithMetadata() {
-        hasMetadata = true
-        createMediaNotification()
-    }
 
     private inner class MediaSessionCallback : MediaSession.Callback {
 

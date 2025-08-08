@@ -1,6 +1,5 @@
 package com.mediacontrols
 
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
@@ -15,10 +14,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import androidx.core.net.toUri
 
 @UnstableApi
 class MediaControlsPlayer(
-    private val reactContext: ReactApplicationContext,
+    reactContext: ReactApplicationContext,
     private val module: MediaControlsModule,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
@@ -147,7 +147,7 @@ class MediaControlsPlayer(
         startPositionMs: Long
     ): ListenableFuture<*> {
         val mediaItemDataList = mediaItems.map { mediaItem ->
-            SimpleBasePlayer.MediaItemData.Builder(mediaItem.mediaId ?: "")
+            MediaItemData.Builder(mediaItem.mediaId)
                 .setMediaItem(mediaItem)
                 .build()
         }
@@ -171,7 +171,7 @@ class MediaControlsPlayer(
             .setDurationMs(metadata.duration?.times(1000)?.toLong())
             .apply {
                 metadata.artwork?.let { artworkUrl ->
-                    setArtworkUri(Uri.parse(artworkUrl))
+                    setArtworkUri(artworkUrl.toUri())
                 }
             }
             .build()
@@ -181,7 +181,7 @@ class MediaControlsPlayer(
             .setMediaMetadata(mediaMetadata)
             .build()
 
-        val mediaItemData = SimpleBasePlayer.MediaItemData.Builder(metadata.title)
+        val mediaItemData = MediaItemData.Builder(metadata.title)
             .setMediaItem(mediaItem)
             .setDefaultPositionUs(metadata.position?.times(1_000_000)?.toLong() ?: 0)
             .setDurationUs(metadata.duration?.times(1_000_000)?.toLong() ?: androidx.media3.common.C.TIME_UNSET)
