@@ -33,6 +33,17 @@ cd ios && pod install
 
 No additional setup required.
 
+#### Customize Appearance
+
+If you want to customize the small media notification icon on Android, you can add the following to your `android/app/src/main/res/values/styles.xml`:
+
+```xml
+<resources>
+  <!--...-->
+  <drawable name="media3_notification_small_icon">@drawable/my_custom_icon</drawable>
+</resources>
+```
+
 ## Verwendung
 
 ### Basic Setup
