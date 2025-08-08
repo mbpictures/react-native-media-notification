@@ -10,14 +10,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
-import androidx.core.os.bundleOf
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import androidx.media3.session.MediaStyleNotificationHelper
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
@@ -34,7 +31,6 @@ class MediaControlsService : MediaSessionService() {
     private var mediaController: MediaController? = null
 
     companion object {
-        private const val NOTIFICATION_ID = 123
         private const val CHANNEL_ID = "media_controls_channel"
         var reactContext: ReactApplicationContext? = null
         var player: MediaControlsPlayer? = null
@@ -82,138 +78,11 @@ class MediaControlsService : MediaSessionService() {
                 try {
                     mediaController = controllerFuture.get()
                     mediaController?.addListener(player!!.getListener())
-
-                    // Create and show media notification
-                    createMediaNotification()
                 } catch (e: Exception) {
                     android.util.Log.e("MediaControlsService", "Failed to create MediaController", e)
                 }
             }, androidx.core.content.ContextCompat.getMainExecutor(this))
         }
-    }
-
-    private fun createMediaNotification() {
-        val player = player ?: return
-
-        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(player.mediaMetadata.title ?: "Unknown Title")
-            .setContentText(player.mediaMetadata.artist ?: "Unknown Artist")
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setOngoing(true)
-            .setExtras(
-                bundleOf(
-                    // Required for Live Notifications & Now Bar
-                    "android.ongoingActivityNoti.style" to 1
-                )
-            )
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-
-        // Sammle nur aktivierte Actions
-        val actions = mutableListOf<NotificationCompat.Action>()
-        val compactViewIndices = mutableListOf<Int>()
-
-        // Previous Button (wenn enabled)
-        if (player.isControlEnabled(Controls.PREVIOUS)) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_previous,
-                    "Previous",
-                    createPendingIntent("previous")
-                )
-            )
-        }
-
-        // Seek Backward (wenn enabled)
-        if (player.isControlEnabled(Controls.SEEK_BACKWARD)) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_rew,
-                    "Rewind",
-                    createPendingIntent("rewind")
-                )
-            )
-        }
-
-        // Play/Pause Button (wenn play oder pause enabled)
-        if (player.isControlEnabled(Controls.PLAY) || player.isControlEnabled(Controls.PAUSE)) {
-            val playPauseIndex = actions.size
-            compactViewIndices.add(playPauseIndex) // Play/Pause immer in Compact View
-
-            actions.add(
-                NotificationCompat.Action(
-                    if (player.isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                    if (player.isPlaying) "Pause" else "Play",
-                    createPendingIntent("play_pause")
-                )
-            )
-        }
-
-        // Seek Forward (wenn enabled)
-        if (player.isControlEnabled(Controls.SEEK_FORWARD)) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_ff,
-                    "Fast Forward",
-                    createPendingIntent("fast_forward")
-                )
-            )
-        }
-
-        // Next Button (wenn enabled)
-        if (player.isControlEnabled(Controls.NEXT)) {
-            val nextIndex = actions.size
-            if (compactViewIndices.size < 3) {
-                compactViewIndices.add(nextIndex)
-            }
-
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_next,
-                    "Next",
-                    createPendingIntent("next")
-                )
-            )
-        }
-
-        // Stop Button (wenn enabled)
-        if (player.isControlEnabled(Controls.STOP)) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_pause,
-                    "Stop",
-                    createPendingIntent("stop")
-                )
-            )
-        }
-
-        // Füge alle Actions zur Notification hinzu
-        actions.forEach { action ->
-            notificationBuilder.addAction(action)
-        }
-
-        // MediaStyle mit korrekten CompactView Indizes
-        val mediaStyle = MediaStyleNotificationHelper.MediaStyle(mediaSession!!)
-
-        if (compactViewIndices.isNotEmpty()) {
-            mediaStyle.setShowActionsInCompactView(*compactViewIndices.toIntArray())
-        }
-
-        notificationBuilder.setStyle(mediaStyle)
-
-        val notification = notificationBuilder.build()
-        startForeground(NOTIFICATION_ID, notification)
-    }
-
-    private fun createPendingIntent(action: String): android.app.PendingIntent {
-        val intent = Intent(this, MediaControlsService::class.java).apply {
-            putExtra("action", action)
-        }
-        return android.app.PendingIntent.getService(
-            this,
-            action.hashCode(),
-            intent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -238,8 +107,6 @@ class MediaControlsService : MediaSessionService() {
                         p.play()
                         module?.sendEvent(Controls.PLAY, null)
                     }
-                    // Update notification nach State-Änderung
-                    createMediaNotification()
                 }
             }
             "next" -> {
@@ -273,7 +140,6 @@ class MediaControlsService : MediaSessionService() {
                 if (player?.isControlEnabled(Controls.STOP) == true) {
                     player.stop()
                     module?.sendEvent(Controls.STOP, null)
-                    createMediaNotification() // Update notification nach Stop
                 }
             }
         }
