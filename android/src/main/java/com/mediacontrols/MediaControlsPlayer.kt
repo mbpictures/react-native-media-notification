@@ -29,7 +29,9 @@ class MediaControlsPlayer(
     private var currentMetadata: MediaTrackMetadata? = null
 
     // Audio interruption
-    private var audioInterruptionEnabled = true
+    private var audioInterruptionEnabled = false
+
+    private var audioFocusListener = AudioFocusListener(reactContext, module, this)
 
     // Control states
     private val enabledControls = mutableMapOf<String, Boolean>().apply {
@@ -162,6 +164,10 @@ class MediaControlsPlayer(
 
     // Custom methods for React Native integration
     fun updateMetadata(metadata: MediaTrackMetadata) {
+        if (metadata.isPlaying == true && audioInterruptionEnabled) {
+            audioFocusListener.requestAudioFocus()
+        }
+
         this.currentMetadata = metadata
 
         val mediaMetadata = MediaMetadata.Builder()
@@ -228,9 +234,18 @@ class MediaControlsPlayer(
     }
 
     fun setAudioInterruptionEnabled(enabled: Boolean) {
+        if (audioInterruptionEnabled == enabled) return
         audioInterruptionEnabled = enabled
-        // Audio focus handling can be implemented here if needed
-        // For now, we just store the state
+
+        if (enabled) {
+            audioFocusListener.requestAudioFocus()
+        } else {
+            audioFocusListener.abandonAudioFocus()
+        }
+    }
+
+    fun releaseFocus() {
+        audioFocusListener.abandonAudioFocus()
     }
 
     fun isAudioInterruptionEnabled(): Boolean = audioInterruptionEnabled

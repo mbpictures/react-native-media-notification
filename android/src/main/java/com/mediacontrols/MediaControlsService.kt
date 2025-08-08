@@ -307,6 +307,7 @@ class MediaControlsService : MediaSessionService() {
     fun stopNotificationAndService() {
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
         stopSelf()
+        player?.releaseFocus()
         mediaSession?.release()
         mediaSession = null
     }
