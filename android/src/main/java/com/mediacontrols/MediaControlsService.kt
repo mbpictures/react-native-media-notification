@@ -113,7 +113,7 @@ class MediaControlsService : MediaSessionService() {
         val compactViewIndices = mutableListOf<Int>()
 
         // Previous Button (wenn enabled)
-        if (player.isControlEnabled("previous")) {
+        if (player.isControlEnabled(Controls.PREVIOUS)) {
             actions.add(
                 NotificationCompat.Action(
                     android.R.drawable.ic_media_previous,
@@ -123,8 +123,19 @@ class MediaControlsService : MediaSessionService() {
             )
         }
 
+        // Seek Backward (wenn enabled)
+        if (player.isControlEnabled(Controls.SEEK_BACKWARD)) {
+            actions.add(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_rew,
+                    "Rewind",
+                    createPendingIntent("rewind")
+                )
+            )
+        }
+
         // Play/Pause Button (wenn play oder pause enabled)
-        if (player.isControlEnabled("play") || player.isControlEnabled("pause")) {
+        if (player.isControlEnabled(Controls.PLAY) || player.isControlEnabled(Controls.PAUSE)) {
             val playPauseIndex = actions.size
             compactViewIndices.add(playPauseIndex) // Play/Pause immer in Compact View
 
@@ -137,8 +148,19 @@ class MediaControlsService : MediaSessionService() {
             )
         }
 
+        // Seek Forward (wenn enabled)
+        if (player.isControlEnabled(Controls.SEEK_FORWARD)) {
+            actions.add(
+                NotificationCompat.Action(
+                    android.R.drawable.ic_media_ff,
+                    "Fast Forward",
+                    createPendingIntent("fast_forward")
+                )
+            )
+        }
+
         // Next Button (wenn enabled)
-        if (player.isControlEnabled("next")) {
+        if (player.isControlEnabled(Controls.NEXT)) {
             val nextIndex = actions.size
             if (compactViewIndices.size < 3) {
                 compactViewIndices.add(nextIndex)
@@ -153,30 +175,8 @@ class MediaControlsService : MediaSessionService() {
             )
         }
 
-        // Seek Backward (wenn seek enabled)
-        if (player.isControlEnabled("seek")) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_rew,
-                    "Rewind",
-                    createPendingIntent("rewind")
-                )
-            )
-        }
-
-        // Seek Forward (wenn seek enabled)
-        if (player.isControlEnabled("seek")) {
-            actions.add(
-                NotificationCompat.Action(
-                    android.R.drawable.ic_media_ff,
-                    "Fast Forward",
-                    createPendingIntent("fast_forward")
-                )
-            )
-        }
-
         // Stop Button (wenn enabled)
-        if (player.isControlEnabled("stop")) {
+        if (player.isControlEnabled(Controls.STOP)) {
             actions.add(
                 NotificationCompat.Action(
                     android.R.drawable.ic_media_pause,
@@ -231,48 +231,48 @@ class MediaControlsService : MediaSessionService() {
         when (action) {
             "play_pause" -> {
                 player?.let { p ->
-                    if (p.isPlaying && p.isControlEnabled("pause")) {
+                    if (p.isPlaying && p.isControlEnabled(Controls.PAUSE)) {
                         p.pause()
-                        module?.sendEvent("pause", null)
-                    } else if (!p.isPlaying && p.isControlEnabled("play")) {
+                        module?.sendEvent(Controls.PAUSE, null)
+                    } else if (!p.isPlaying && p.isControlEnabled(Controls.PLAY)) {
                         p.play()
-                        module?.sendEvent("play", null)
+                        module?.sendEvent(Controls.PLAY, null)
                     }
                     // Update notification nach State-Änderung
                     createMediaNotification()
                 }
             }
             "next" -> {
-                if (player?.isControlEnabled("next") == true) {
-                    module?.sendEvent("skipToNext", null)
+                if (player?.isControlEnabled(Controls.NEXT) == true) {
+                    module?.sendEvent(Controls.NEXT, null)
                 }
             }
             "previous" -> {
-                if (player?.isControlEnabled("previous") == true) {
-                    module?.sendEvent("skipToPrevious", null)
+                if (player?.isControlEnabled(Controls.PREVIOUS) == true) {
+                    module?.sendEvent(Controls.PREVIOUS, null)
                 }
             }
             "rewind" -> {
-                if (player?.isControlEnabled("seek") == true) {
+                if (player?.isControlEnabled(Controls.SEEK_BACKWARD) == true) {
                     val currentPosition = player.currentPosition
-                    val newPosition = (currentPosition - 10000).coerceAtLeast(0)
+                    val newPosition = (currentPosition - 15000).coerceAtLeast(0)
                     player.seekTo(newPosition)
-                    module?.sendEvent("seekBackward", (newPosition / 1000).toInt())
+                    module?.sendEvent(Controls.SEEK_BACKWARD, (newPosition / 1000).toInt())
                 }
             }
             "fast_forward" -> {
-                if (player?.isControlEnabled("seek") == true) {
+                if (player?.isControlEnabled(Controls.SEEK_FORWARD) == true) {
                     val currentPosition = player.currentPosition
                     val duration = player.duration
-                    val newPosition = (currentPosition + 10000).coerceAtMost(duration)
+                    val newPosition = (currentPosition + 15000).coerceAtMost(duration)
                     player.seekTo(newPosition)
-                    module?.sendEvent("seekForward", (newPosition / 1000).toInt())
+                    module?.sendEvent(Controls.SEEK_FORWARD, (newPosition / 1000).toInt())
                 }
             }
             "stop" -> {
-                if (player?.isControlEnabled("stop") == true) {
+                if (player?.isControlEnabled(Controls.STOP) == true) {
                     player.stop()
-                    module?.sendEvent("stop", null)
+                    module?.sendEvent(Controls.STOP, null)
                     createMediaNotification() // Update notification nach Stop
                 }
             }

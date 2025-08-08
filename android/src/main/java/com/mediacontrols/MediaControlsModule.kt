@@ -47,7 +47,8 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   override fun setControlEnabled(name: String, enabled: Boolean) {
-    MediaControlsService.player?.setControlEnabled(name, enabled)
+    val control = Controls.fromString(name) ?: throw IllegalArgumentException("Invalid control name: $name")
+    MediaControlsService.player?.setControlEnabled(control, enabled)
   }
 
   @ReactMethod
@@ -98,14 +99,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     try {
       ensureServiceStarted()
       val player = MediaControlsService.player
-      val controls = mapOf(
-        "play" to (player?.isControlEnabled("play") ?: false),
-        "pause" to (player?.isControlEnabled("pause") ?: false),
-        "stop" to (player?.isControlEnabled("stop") ?: false),
-        "next" to (player?.isControlEnabled("next") ?: false),
-        "previous" to (player?.isControlEnabled("previous") ?: false),
-        "seek" to (player?.isControlEnabled("seek") ?: false)
-      )
+      val controls = Controls.entries.associate{ Pair(it.code, player?.isControlEnabled(it) ?: false) }
 
       val result = Arguments.createMap()
       controls.forEach { (key, value) ->
@@ -147,9 +141,9 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  fun sendEvent(eventName: String, position: Int?) {
+  fun sendEvent(eventName: Controls, position: Int?) {
     val eventData = Arguments.createMap().apply {
-        putString("command", eventName)
+        putString("command", eventName.code)
         position?.let {
           putInt("seekPosition", it)
         }

@@ -28,21 +28,21 @@ class AudioFocusListener(
         if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
             abandonAudioFocus()
             mPlayOnAudioFocus = false
-            module.sendEvent("stop", null)
+            module.sendEvent(Controls.STOP, null)
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             if (player.isPlaying) {
                 mPlayOnAudioFocus = true
-                module.sendEvent("pause", null)
+                module.sendEvent(Controls.PAUSE, null)
             }
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
-            module.sendEvent("duck", null)
+            module.sendEvent(Controls.DUCK, null)
             ducked = true
         } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
             if (mPlayOnAudioFocus) {
-                module.sendEvent("play", null)
+                module.sendEvent(Controls.PLAY, null)
             }
             if (ducked) {
-                module.sendEvent("unduck", null)
+                module.sendEvent(Controls.UN_DUCK, null)
             }
             mPlayOnAudioFocus = false
             ducked = false

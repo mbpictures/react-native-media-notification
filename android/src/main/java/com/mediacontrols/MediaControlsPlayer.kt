@@ -34,13 +34,15 @@ class MediaControlsPlayer(
     private var audioFocusListener = AudioFocusListener(reactContext, module, this)
 
     // Control states
-    private val enabledControls = mutableMapOf<String, Boolean>().apply {
-        put("play", true)
-        put("pause", true)
-        put("stop", true)
-        put("next", true)
-        put("previous", true)
-        put("seek", true)
+    private val enabledControls = mutableMapOf<Controls, Boolean>().apply {
+        put(Controls.PLAY, true)
+        put(Controls.PAUSE, true)
+        put(Controls.STOP, true)
+        put(Controls.NEXT, true)
+        put(Controls.PREVIOUS, true)
+        put(Controls.SEEK, true)
+        put(Controls.SEEK_FORWARD, true)
+        put(Controls.SEEK_BACKWARD, true)
     }
 
     // Player listener to track state changes
@@ -105,7 +107,7 @@ class MediaControlsPlayer(
                 .setPlaybackState(Player.STATE_IDLE)
         }
 
-        module.sendEvent("stop", null)
+        module.sendEvent(Controls.STOP, null)
         return Futures.immediateFuture(null)
     }
 
@@ -122,18 +124,18 @@ class MediaControlsPlayer(
         // Handle different seek commands
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-                module.sendEvent("skipToNext", null)
+                module.sendEvent(Controls.NEXT, null)
             }
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-                module.sendEvent("skipToPrevious", null)
+                module.sendEvent(Controls.PREVIOUS, null)
             }
             Player.COMMAND_SEEK_FORWARD -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent("seekForward", positionSeconds)
+                module.sendEvent(Controls.SEEK_FORWARD, positionSeconds)
             }
             Player.COMMAND_SEEK_BACK -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent("seekBackward", positionSeconds)
+                module.sendEvent(Controls.SEEK_BACKWARD, positionSeconds)
             }
             else -> {
                 emitSeekEvent(positionMs)
@@ -208,16 +210,18 @@ class MediaControlsPlayer(
         }
     }
 
-    fun setControlEnabled(controlName: String, enabled: Boolean) {
+    fun setControlEnabled(controlName: Controls, enabled: Boolean) {
         enabledControls[controlName] = enabled
 
         // Update available commands based on enabled controls
         val availableCommands = mutableSetOf<Int>().apply {
-            if (enabledControls["play"] == true || enabledControls["pause"] == true) add(Player.COMMAND_PLAY_PAUSE)
-            if (enabledControls["stop"] == true) add(Player.COMMAND_STOP)
-            if (enabledControls["next"] == true) add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-            if (enabledControls["previous"] == true) add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-            if (enabledControls["seek"] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            if (enabledControls[Controls.PLAY] == true || enabledControls[Controls.PAUSE] == true) add(Player.COMMAND_PLAY_PAUSE)
+            if (enabledControls[Controls.STOP] == true) add(Player.COMMAND_STOP)
+            if (enabledControls[Controls.NEXT] == true) add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            if (enabledControls[Controls.PREVIOUS] == true) add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            if (enabledControls[Controls.SEEK] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            if (enabledControls[Controls.SEEK_FORWARD] == true) add(Player.COMMAND_SEEK_FORWARD)
+            if (enabledControls[Controls.SEEK_BACKWARD] == true) add(Player.COMMAND_SEEK_BACK)
 
             add(Player.COMMAND_PREPARE)
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
@@ -229,7 +233,7 @@ class MediaControlsPlayer(
         }
     }
 
-    fun isControlEnabled(controlName: String): Boolean {
+    fun isControlEnabled(controlName: Controls): Boolean {
         return enabledControls[controlName] ?: false
     }
 
@@ -265,13 +269,13 @@ class MediaControlsPlayer(
     }
 
     private fun emitPlaybackStateChanged(isPlaying: Boolean) {
-        val command = if (isPlaying) "play" else "pause"
+        val command = if (isPlaying) Controls.PLAY else Controls.PAUSE
         module.sendEvent(command, null)
     }
 
     private fun emitSeekEvent(positionMs: Long) {
         val positionSeconds = (positionMs / 1000).toInt()
-        module.sendEvent("seek", positionSeconds)
+        module.sendEvent(Controls.SEEK, positionSeconds)
     }
 
     fun cleanup() {
