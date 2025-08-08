@@ -60,8 +60,7 @@ export default function App() {
 
     const stopListener = MediaControls.addEventListener('stop', () => {
       console.log('Stop event received');
-      setIsPlaying(false);
-      setCurrentPosition(0);
+      stopPlayback().catch(console.error);
     });
 
     const nextListener = MediaControls.addEventListener('skipToNext', () => {
