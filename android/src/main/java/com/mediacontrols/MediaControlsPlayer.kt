@@ -22,8 +22,8 @@ import kotlinx.coroutines.cancel
 
 @UnstableApi
 class MediaControlsPlayer(
-    private val reactContext: ReactApplicationContext?,
-    private val module: MediaControlsModule?,
+    private val reactContext: ReactApplicationContext,
+    private val module: MediaControlsModule,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -107,7 +107,7 @@ class MediaControlsPlayer(
                 .setPlaybackState(Player.STATE_IDLE)
         }
 
-        module?.sendEvent("stop", null)
+        module.sendEvent("stop", null)
         return Futures.immediateFuture(null)
     }
 
@@ -124,18 +124,18 @@ class MediaControlsPlayer(
         // Handle different seek commands
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-                module?.sendEvent("skipToNext", null)
+                module.sendEvent("skipToNext", null)
             }
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-                module?.sendEvent("skipToPrevious", null)
+                module.sendEvent("skipToPrevious", null)
             }
             Player.COMMAND_SEEK_FORWARD -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module?.sendEvent("seekForward", positionSeconds)
+                module.sendEvent("seekForward", positionSeconds)
             }
             Player.COMMAND_SEEK_BACK -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module?.sendEvent("seekBackward", positionSeconds)
+                module.sendEvent("seekBackward", positionSeconds)
             }
             else -> {
                 emitSeekEvent(positionMs)
@@ -255,12 +255,12 @@ class MediaControlsPlayer(
 
     private fun emitPlaybackStateChanged(isPlaying: Boolean) {
         val command = if (isPlaying) "play" else "pause"
-        module?.sendEvent(command, null)
+        module.sendEvent(command, null)
     }
 
     private fun emitSeekEvent(positionMs: Long) {
         val positionSeconds = (positionMs / 1000).toInt()
-        module?.sendEvent("seek", positionSeconds)
+        module.sendEvent("seek", positionSeconds)
     }
 
     fun cleanup() {
