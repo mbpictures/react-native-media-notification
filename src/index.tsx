@@ -1,5 +1,6 @@
 import MediaControls, {
   ALL_MEDIA_EVENTS,
+  type MediaControl,
   type MediaControlEvent,
 } from './NativeMediaControls';
 import type { MediaTrackMetadata } from './NativeMediaControls';
@@ -45,10 +46,7 @@ export async function enableAudioInterruption(enabled: boolean): Promise<void> {
   return MediaControls.enableAudioInterruption(enabled);
 }
 
-export function setControlEnabled(
-  name: MediaControlEvent,
-  enabled: boolean
-): void {
+export function setControlEnabled(name: MediaControl, enabled: boolean): void {
   if (!ALL_MEDIA_EVENTS.includes(name)) {
     throw new Error(`Unknown media control event: ${name}`);
   }

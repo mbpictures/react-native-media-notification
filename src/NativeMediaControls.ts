@@ -13,7 +13,9 @@ export const ALL_MEDIA_EVENTS = [
   'seekBackward',
   'seek',
 ] as const;
-export type MediaControlEvent = (typeof ALL_MEDIA_EVENTS)[number];
+export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
+
+export type MediaControlEvent = MediaControl | 'duck' | 'unDuck';
 
 export interface MediaTrackMetadata {
   title: string;
