@@ -61,6 +61,8 @@ class MediaControlsService : MediaSessionService() {
             .setCallback(MediaSessionCallback())
             .build()
 
+        setMediaNotificationProvider(MediaNotificationProvider(this))
+
         // Create MediaController for media controls
         setupMediaController()
 
