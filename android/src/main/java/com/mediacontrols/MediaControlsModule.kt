@@ -12,8 +12,6 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.module.annotations.ReactModule
-import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.mediacontrols.MediaControlsService.Companion
 
 @ReactModule(name = MediaControlsModule.NAME)
 @UnstableApi
