@@ -101,18 +101,6 @@ export default function App() {
       }
     );
 
-    MediaControls.setControlEnabled('play', true);
-    MediaControls.setControlEnabled('pause', true);
-    MediaControls.setControlEnabled('seek', true);
-    MediaControls.setControlEnabled('skipToPrevious', true);
-    MediaControls.setControlEnabled('skipToNext', true);
-    MediaControls.setControlEnabled('seekForward', true);
-    MediaControls.setControlEnabled('seekBackward', true);
-    MediaControls.setControlEnabled('stop', true);
-
-    // Audio Interruptions aktivieren
-    MediaControls.enableAudioInterruption(true).catch(console.error);
-
     // Cleanup
     return () => {
       playListener.remove();
@@ -125,6 +113,20 @@ export default function App() {
       seekBackwardListener.remove();
     };
   }, [isPlaying]);
+
+  useEffect(() => {
+    MediaControls.setControlEnabled('play', true);
+    MediaControls.setControlEnabled('pause', true);
+    MediaControls.setControlEnabled('seek', true);
+    MediaControls.setControlEnabled('skipToPrevious', true);
+    MediaControls.setControlEnabled('skipToNext', true);
+    MediaControls.setControlEnabled('seekForward', true);
+    MediaControls.setControlEnabled('seekBackward', true);
+    MediaControls.setControlEnabled('stop', true);
+
+    // Audio Interruptions aktivieren
+    MediaControls.enableAudioInterruption(true).catch(console.error);
+  }, []);
 
   // Simuliere Playback Progress
   useEffect(() => {
