@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.view.KeyEvent
 import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
@@ -60,7 +61,18 @@ class MediaControlsService : MediaSessionService() {
         // Create media session
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(MediaSessionCallback())
+            .setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
             .build()
+
+        player?.addListener(object : Player.Listener {
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+            }
+
+            override fun onRepeatModeChanged(repeatMode: Int) {
+                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+            }
+        })
 
         setMediaNotificationProvider(MediaNotificationProvider(this))
 
@@ -191,7 +203,7 @@ class MediaControlsService : MediaSessionService() {
         ): MediaSession.ConnectionResult {
             // Accept all connections and provide full access to player commands
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                .addSessionCommands(player?.getAvailableCustomCommands()?.map { c -> c.sessionCommand!! } ?: emptyList())
+                .addSessionCommands(CustomCommandButton.entries.map { c -> c.commandButton.sessionCommand!! })
                 .build()
 
             val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
@@ -205,10 +217,7 @@ class MediaControlsService : MediaSessionService() {
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             super.onPostConnect(session, controller)
-            val customCommands = player?.getAvailableCustomCommands() ?: emptyList()
-            if (customCommands.isNotEmpty()) {
-                mediaSession?.setCustomLayout(customCommands.toList())
-            }
+            //mediaSession?.setCustomLayout(CustomCommandButton.entries.map { c -> c.commandButton })
         }
 
         override fun onCustomCommand(
@@ -235,6 +244,14 @@ class MediaControlsService : MediaSessionService() {
                 }
                 CustomCommandButton.REWIND.customAction -> {
                     player?.seekBack()
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CustomCommandButton.SHUFFLE_ON.customAction -> {
+                    player?.emitShuffleClicked()
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CustomCommandButton.SHUFFLE_OFF.customAction -> {
+                    player?.emitShuffleClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))

@@ -10,7 +10,9 @@ enum class Controls(val code: String) {
     SEEK_BACKWARD("seekBackward"),
     SEEK_FORWARD("seekForward"),
     DUCK("duck"),
-    UN_DUCK("unDuck");
+    UN_DUCK("unDuck"),
+    SHUFFLE("shuffle"),
+    REPEAT_MODE("repeatMode");
 
     companion object {
         fun fromString(value: String): Controls? {

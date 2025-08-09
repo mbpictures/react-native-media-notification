@@ -156,6 +156,10 @@ class MediaControlsPlayer(
         return Futures.immediateFuture(null)
     }
 
+    fun emitShuffleClicked() {
+        module.sendEvent(Controls.SHUFFLE, null)
+    }
+
     // Custom methods for React Native integration
     fun updateMetadata(metadata: MediaTrackMetadata) {
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
@@ -199,7 +203,29 @@ class MediaControlsPlayer(
                     if (metadata.isPlaying == true) Player.STATE_READY else Player.STATE_IDLE
                 )
                 .setAvailableCommands(state.availableCommands)
+                .setRepeatMode(metadata.repeatMode)
+                .setShuffleModeEnabled(metadata.shuffleMode)
         }
+    }
+
+    private fun State.Builder.setRepeatMode(mode: String?): State.Builder {
+        val repeatMode = when (mode) {
+            "off" -> Player.REPEAT_MODE_OFF
+            "one" -> Player.REPEAT_MODE_ONE
+            "all" -> Player.REPEAT_MODE_ALL
+            else -> null
+        }
+        if (repeatMode == null) {
+            return this
+        }
+        return this.setRepeatMode(repeatMode)
+    }
+
+    private fun State.Builder.setShuffleModeEnabled(enabled: Boolean?): State.Builder {
+        if (enabled == null) {
+            return this
+        }
+        return this.setShuffleModeEnabled(enabled)
     }
 
     fun setControlEnabled(controlName: Controls, enabled: Boolean) {
@@ -214,6 +240,8 @@ class MediaControlsPlayer(
             if (enabledControls[Controls.SEEK] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             if (enabledControls[Controls.SEEK_FORWARD] == true) add(Player.COMMAND_SEEK_FORWARD)
             if (enabledControls[Controls.SEEK_BACKWARD] == true) add(Player.COMMAND_SEEK_BACK)
+            if (enabledControls[Controls.SHUFFLE] == true) add(Player.COMMAND_SET_SHUFFLE_MODE)
+            if (enabledControls[Controls.REPEAT_MODE] == true) add(Player.COMMAND_SET_REPEAT_MODE)
 
             add(Player.COMMAND_PREPARE)
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
@@ -227,6 +255,13 @@ class MediaControlsPlayer(
 
     fun getAvailableCustomCommands(): Set<CommandButton> {
         return mutableSetOf<CommandButton>().apply {
+            if(isControlEnabled(Controls.SHUFFLE)) {
+                if (state.shuffleModeEnabled) {
+                    add(CustomCommandButton.SHUFFLE_ON.commandButton)
+                } else {
+                    add(CustomCommandButton.SHUFFLE_OFF.commandButton)
+                }
+            }
             if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
             if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
         }
@@ -293,5 +328,7 @@ data class MediaTrackMetadata(
     val duration: Double? = null,
     val artwork: String? = null,
     val position: Double? = null,
-    val isPlaying: Boolean? = null
+    val isPlaying: Boolean? = null,
+    val repeatMode: String? = null,
+    val shuffleMode: Boolean? = null
 )

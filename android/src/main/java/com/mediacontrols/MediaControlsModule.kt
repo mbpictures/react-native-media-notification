@@ -64,7 +64,9 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
         duration = if (metadata.hasKey("duration")) metadata.getDouble("duration") else null,
         artwork = metadata.getString("artwork"),
         position = if (metadata.hasKey("position")) metadata.getDouble("position") else null,
-        isPlaying = if (metadata.hasKey("isPlaying")) metadata.getBoolean("isPlaying") else null
+        isPlaying = if (metadata.hasKey("isPlaying")) metadata.getBoolean("isPlaying") else null,
+        shuffleMode = if (metadata.hasKey("shuffle")) metadata.getBoolean("shuffle") else null,
+        repeatMode = if (metadata.hasKey("repeatMode")) metadata.getString("repeatMode") else null,
       )
 
       MediaControlsService.player?.updateMetadata(trackMetadata)
