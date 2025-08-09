@@ -35,16 +35,7 @@ class MediaControlsPlayer(
     private var audioFocusListener = AudioFocusListener(reactContext, module, this)
 
     // Control states
-    private val enabledControls = mutableMapOf<Controls, Boolean>().apply {
-        put(Controls.PLAY, true)
-        put(Controls.PAUSE, true)
-        put(Controls.STOP, true)
-        put(Controls.NEXT, true)
-        put(Controls.PREVIOUS, true)
-        put(Controls.SEEK, true)
-        put(Controls.SEEK_FORWARD, true)
-        put(Controls.SEEK_BACKWARD, true)
-    }
+    private val enabledControls = mutableMapOf<Controls, Boolean>()
 
     // Player listener to track state changes
     private val playerListener = object : Player.Listener {
