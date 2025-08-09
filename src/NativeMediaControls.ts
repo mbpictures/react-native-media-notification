@@ -12,6 +12,8 @@ export const ALL_MEDIA_EVENTS = [
   'seekForward',
   'seekBackward',
   'seek',
+  'shuffle',
+  'repeatMode',
 ] as const;
 export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
 
@@ -25,6 +27,8 @@ export interface MediaTrackMetadata {
   artwork?: string;
   position?: number;
   isPlaying?: boolean;
+  repeatMode?: 'off' | 'one' | 'all';
+  shuffle?: boolean;
 }
 
 export interface NativeEvent {
