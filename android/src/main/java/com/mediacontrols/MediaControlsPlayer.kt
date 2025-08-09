@@ -233,6 +233,13 @@ class MediaControlsPlayer(
         }
     }
 
+    fun getAvailableCustomCommands(): Set<CommandButton> {
+        return mutableSetOf<CommandButton>().apply {
+            if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
+            if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
+        }
+    }
+
     fun isControlEnabled(controlName: Controls): Boolean {
         return enabledControls[controlName] ?: false
     }
