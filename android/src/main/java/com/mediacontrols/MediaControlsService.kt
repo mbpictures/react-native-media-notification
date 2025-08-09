@@ -191,6 +191,7 @@ class MediaControlsService : MediaSessionService() {
         ): MediaSession.ConnectionResult {
             // Accept all connections and provide full access to player commands
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .addSessionCommands(player?.getAvailableCustomCommands()?.map { c -> c.sessionCommand!! } ?: emptyList())
                 .build()
 
             val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
@@ -204,7 +205,10 @@ class MediaControlsService : MediaSessionService() {
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             super.onPostConnect(session, controller)
-            // Custom initialization can be done here if needed
+            val customCommands = player?.getAvailableCustomCommands() ?: emptyList()
+            if (customCommands.isNotEmpty()) {
+                mediaSession?.setCustomLayout(customCommands.toList())
+            }
         }
 
         override fun onCustomCommand(
@@ -223,6 +227,14 @@ class MediaControlsService : MediaSessionService() {
                             p.play()
                         }
                     }
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CustomCommandButton.FORWARD.customAction -> {
+                    player?.seekForward()
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CustomCommandButton.REWIND.customAction -> {
+                    player?.seekBack()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))

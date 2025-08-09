@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import androidx.core.net.toUri
+import androidx.media3.session.CommandButton
 
 @UnstableApi
 class MediaControlsPlayer(
@@ -230,6 +231,13 @@ class MediaControlsPlayer(
 
         updateState { builder ->
             builder.setAvailableCommands(Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build())
+        }
+    }
+
+    fun getAvailableCustomCommands(): Set<CommandButton> {
+        return mutableSetOf<CommandButton>().apply {
+            if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
+            if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
         }
     }
 
