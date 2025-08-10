@@ -246,12 +246,12 @@ class MediaControlsService : MediaSessionService() {
                     player?.seekBack()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
-                CustomCommandButton.SHUFFLE_ON.customAction -> {
+                CustomCommandButton.SHUFFLE_ON.customAction, CustomCommandButton.SHUFFLE_OFF.customAction -> {
                     player?.emitShuffleClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
-                CustomCommandButton.SHUFFLE_OFF.customAction -> {
-                    player?.emitShuffleClicked()
+                CustomCommandButton.REPEAT_ONE.customAction, CustomCommandButton.REPEAT_OFF.customAction, CustomCommandButton.REPEAT_ALL.customAction -> {
+                    player?.emitRepeatClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))

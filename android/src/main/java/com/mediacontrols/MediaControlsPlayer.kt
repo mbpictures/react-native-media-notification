@@ -160,6 +160,10 @@ class MediaControlsPlayer(
         module.sendEvent(Controls.SHUFFLE, null)
     }
 
+    fun emitRepeatClicked() {
+        module.sendEvent(Controls.REPEAT_MODE, null)
+    }
+
     // Custom methods for React Native integration
     fun updateMetadata(metadata: MediaTrackMetadata) {
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
@@ -260,6 +264,13 @@ class MediaControlsPlayer(
                     add(CustomCommandButton.SHUFFLE_ON.commandButton)
                 } else {
                     add(CustomCommandButton.SHUFFLE_OFF.commandButton)
+                }
+            }
+            if (isControlEnabled(Controls.REPEAT_MODE)) {
+                when (state.repeatMode) {
+                    REPEAT_MODE_OFF -> add(CustomCommandButton.REPEAT_OFF.commandButton)
+                    REPEAT_MODE_ONE -> add(CustomCommandButton.REPEAT_ONE.commandButton)
+                    REPEAT_MODE_ALL -> add(CustomCommandButton.REPEAT_ALL.commandButton)
                 }
             }
             if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
