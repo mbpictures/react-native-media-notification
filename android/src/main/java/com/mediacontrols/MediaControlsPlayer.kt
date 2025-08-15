@@ -37,47 +37,23 @@ class MediaControlsPlayer(
     // Control states
     private val enabledControls = mutableMapOf<Controls, Boolean>()
 
-    // Player listener to track state changes
-    private val playerListener = object : Player.Listener {
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            android.util.Log.d("MediaControlsPlayer", "onPlayWhenReadyChanged: $playWhenReady, reason: $reason")
-            //emitPlaybackStateChanged(playWhenReady)
-        }
-
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            android.util.Log.d("MediaControlsPlayer", "onPlaybackStateChanged: $playbackState, playWhenReady: $playWhenReady")
-            val isPlaying = playbackState == Player.STATE_READY && playWhenReady
-            //emitPlaybackStateChanged(isPlaying)
-        }
-
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            android.util.Log.d("MediaControlsPlayer", "onIsPlayingChanged: $isPlaying")
-            //emitPlaybackStateChanged(isPlaying)
-        }
-
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                emitSeekEvent(newPosition.positionMs)
-            }
-        }
-    }
-
-    init {
-        // Add listener to track state changes from external sources (notifications, etc.)
-        addListener(playerListener)
-    }
-
     override fun getState(): State = currentState
 
-    fun getListener(): Player.Listener = playerListener
-
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        if (playWhenReady && audioInterruptionEnabled) {
+            audioFocusListener.requestAudioFocus()
+        }
+
         updateState { builder ->
-            builder.setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            builder
+                .setPlayWhenReady(
+                    playWhenReady,
+                    Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+                )
+                .setPlaybackState(
+                    if (playWhenReady) Player.STATE_READY else Player.STATE_IDLE
+                )
+                .setContentPositionMs(currentState.contentPositionMsSupplier.get())
         }
 
         // Emit event to React Native
@@ -324,9 +300,6 @@ class MediaControlsPlayer(
     }
 
     fun cleanup() {
-        Handler(applicationLooper).post {
-            removeListener(playerListener)
-        }
         scope.cancel()
     }
 }
