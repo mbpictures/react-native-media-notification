@@ -92,7 +92,6 @@ class MediaControlsService : MediaSessionService() {
             controllerFuture.addListener({
                 try {
                     mediaController = controllerFuture.get()
-                    mediaController?.addListener(player!!.getListener())
                 } catch (e: Exception) {
                     android.util.Log.e("MediaControlsService", "Failed to create MediaController", e)
                 }
