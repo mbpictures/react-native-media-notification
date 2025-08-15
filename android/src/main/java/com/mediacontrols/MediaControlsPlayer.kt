@@ -50,9 +50,6 @@ class MediaControlsPlayer(
                     playWhenReady,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(
-                    if (playWhenReady) Player.STATE_READY else Player.STATE_IDLE
-                )
                 .setContentPositionMs(currentState.contentPositionMsSupplier.get())
         }
 
@@ -187,9 +184,7 @@ class MediaControlsPlayer(
                     metadata.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(
-                    if (metadata.isPlaying == true) Player.STATE_READY else Player.STATE_IDLE
-                )
+                .setPlaybackState(Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(metadata.repeatMode)
                 .setShuffleModeEnabled(metadata.shuffleMode)
