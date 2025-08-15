@@ -50,9 +50,6 @@ class MediaControlsPlayer(
                     playWhenReady,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(
-                    if (playWhenReady) Player.STATE_READY else Player.STATE_IDLE
-                )
                 .setContentPositionMs(currentState.contentPositionMsSupplier.get())
         }
 
@@ -153,6 +150,9 @@ class MediaControlsPlayer(
             .setArtist(metadata.artist)
             .setAlbumTitle(metadata.album)
             .setDurationMs(metadata.duration?.times(1000)?.toLong())
+            .setIsPlayable(true)
+            .setIsBrowsable(false)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
             .apply {
                 metadata.artwork?.let { artworkUrl ->
                     setArtworkUri(artworkUrl.toUri())
@@ -160,15 +160,20 @@ class MediaControlsPlayer(
             }
             .build()
 
+        // Create unique media ID for Android Auto
+        val mediaId = "${metadata.title}_${metadata.artist}".replace(" ", "_")
+
         val mediaItem = MediaItem.Builder()
-            .setMediaId(metadata.title) // Use title as media ID
+            .setMediaId(mediaId)
+            .setUri("content://media/external/audio/media/1") // Placeholder URI for Android Auto
             .setMediaMetadata(mediaMetadata)
             .build()
 
-        val mediaItemData = MediaItemData.Builder(metadata.title)
+        val mediaItemData = MediaItemData.Builder(mediaId)
             .setMediaItem(mediaItem)
             .setDefaultPositionUs(metadata.position?.times(1_000_000)?.toLong() ?: 0)
             .setDurationUs(metadata.duration?.times(1_000_000)?.toLong() ?: androidx.media3.common.C.TIME_UNSET)
+            .setIsSeekable(true)
             .build()
 
         updateState { builder ->
@@ -179,9 +184,7 @@ class MediaControlsPlayer(
                     metadata.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(
-                    if (metadata.isPlaying == true) Player.STATE_READY else Player.STATE_IDLE
-                )
+                .setPlaybackState(Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(metadata.repeatMode)
                 .setShuffleModeEnabled(metadata.shuffleMode)
