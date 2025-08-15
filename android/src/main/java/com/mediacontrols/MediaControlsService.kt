@@ -99,66 +99,6 @@ class MediaControlsService : MediaSessionService() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val keyEvent: KeyEvent? = intent!!.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
-
-        keyEvent?.let { handleNotificationAction(it) }
-
-        return super.onStartCommand(intent, flags, startId)
-    }
-
-    private fun handleNotificationAction(action: KeyEvent) {
-        val module = reactContext?.getNativeModule(MediaControlsModule::class.java)
-        val player = player
-
-        when (action.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                player?.let { p ->
-                    if (p.isPlaying && p.isControlEnabled(Controls.PAUSE)) {
-                        p.pause()
-                        module?.sendEvent(Controls.PAUSE, null)
-                    } else if (!p.isPlaying && p.isControlEnabled(Controls.PLAY)) {
-                        p.play()
-                        module?.sendEvent(Controls.PLAY, null)
-                    }
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                if (player?.isControlEnabled(Controls.NEXT) == true) {
-                    module?.sendEvent(Controls.NEXT, null)
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                if (player?.isControlEnabled(Controls.PREVIOUS) == true) {
-                    module?.sendEvent(Controls.PREVIOUS, null)
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                if (player?.isControlEnabled(Controls.SEEK_BACKWARD) == true) {
-                    val currentPosition = player.currentPosition
-                    val newPosition = (currentPosition - 15000).coerceAtLeast(0)
-                    player.seekTo(newPosition)
-                    module?.sendEvent(Controls.SEEK_BACKWARD, (newPosition / 1000).toInt())
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                if (player?.isControlEnabled(Controls.SEEK_FORWARD) == true) {
-                    val currentPosition = player.currentPosition
-                    val duration = player.duration
-                    val newPosition = (currentPosition + 15000).coerceAtMost(duration)
-                    player.seekTo(newPosition)
-                    module?.sendEvent(Controls.SEEK_FORWARD, (newPosition / 1000).toInt())
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_STOP -> {
-                if (player?.isControlEnabled(Controls.STOP) == true) {
-                    player.stop()
-                    module?.sendEvent(Controls.STOP, null)
-                }
-            }
-        }
-    }
-
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
