@@ -40,8 +40,20 @@ class MediaControlsPlayer(
     override fun getState(): State = currentState
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        if (playWhenReady && audioInterruptionEnabled) {
+            audioFocusListener.requestAudioFocus()
+        }
+
         updateState { builder ->
-            builder.setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            builder
+                .setPlayWhenReady(
+                    playWhenReady,
+                    Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+                )
+                .setPlaybackState(
+                    if (playWhenReady) Player.STATE_READY else Player.STATE_IDLE
+                )
+                .setContentPositionMs(currentState.contentPositionMsSupplier.get())
         }
 
         // Emit event to React Native
