@@ -54,6 +54,11 @@ class MediaControlsService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
+        // TODO: handle headless service with HeadlessJsTask
+        if (player == null || reactContext == null) {
+            return
+        }
+
         // Create notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel()
