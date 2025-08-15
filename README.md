@@ -31,7 +31,29 @@ cd ios && pod install
 
 ### Android
 
-No additional setup required.
+#### Android Auto
+To enable Android Auto support, you need to add the following in the application tag of your `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.yourapp">
+    <!--...-->
+    <application>
+        <!--...-->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+    </application>
+</manifest>
+```
+
+And create the file `android/app/src/main/res/xml/automotive_app_desc.xml` with the following content:
+
+```xml
+<automotiveApp>
+  <uses name="media"/>
+</automotiveApp>
+```
 
 #### Customize Appearance
 
