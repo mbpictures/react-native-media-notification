@@ -43,7 +43,8 @@ class MediaControlsService : MediaSessionService() {
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        return if (intent?.action == "androidx.media3.session.MediaSessionService") {
+        return if (intent?.action == "androidx.media3.session.MediaSessionService" ||
+                   intent?.action == "android.media.browse.MediaBrowserService") {
             super.onBind(intent)!!
         } else {
             binder
@@ -61,16 +62,18 @@ class MediaControlsService : MediaSessionService() {
         // Create media session
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(MediaSessionCallback())
-            .setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+            .setId("MediaControlsSession")
             .build()
+
+        updateCustomLayout()
 
         player?.addListener(object : Player.Listener {
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+                updateCustomLayout()
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
-                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+                updateCustomLayout()
             }
         })
 
@@ -80,6 +83,10 @@ class MediaControlsService : MediaSessionService() {
         setupMediaController()
 
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
+    }
+
+    private fun updateCustomLayout() {
+        mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
     }
 
     private fun setupMediaController() {
