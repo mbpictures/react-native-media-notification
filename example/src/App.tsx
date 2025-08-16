@@ -1,28 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet } from 'react-native';
 import * as MediaControls from 'react-native-media-controls';
+import Sound from 'react-native-sound';
 
 const tracks = [
   {
     title: 'Relaxing Nature Sounds',
     artist: 'Nature Sounds',
     album: 'Peaceful Moments',
-    duration: 180,
     artwork: 'https://picsum.photos/seed/notification1/300/300',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
   },
   {
     title: 'Upbeat Song',
     artist: 'Happy Band',
     album: 'Feel Good Album',
-    duration: 210,
     artwork: 'https://picsum.photos/seed/notification2/300/300',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
   },
   {
     title: 'Classical Piece',
     artist: 'Orchestra',
     album: 'Symphonies',
-    duration: 240,
     artwork: 'https://picsum.photos/seed/notification3/300/300',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
   },
 ];
 
@@ -30,21 +31,27 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPosition, setCurrentPosition] = useState(0);
   const [currentTrack, setCurrentTrack] = useState(0);
+  const sound = useRef<Sound | null>(null);
 
   const handleSetCurrentTrack = (index: number) => {
+    if (sound.current) {
+      sound.current.stop();
+      sound.current = null;
+    }
     const track = tracks[index];
     if (!track) return;
     MediaControls.updateMetadata({
       title: track.title,
       artist: track.artist,
       album: track.album,
-      duration: track.duration,
+      duration: 0,
       position: 0,
       isPlaying: isPlaying,
       artwork: track.artwork,
     }).catch(console.error);
     setCurrentTrack(index);
     setCurrentPosition(0);
+    setIsPlaying(false);
   };
   useEffect(() => {
     // Event Listeners Setup
@@ -88,7 +95,7 @@ export default function App() {
       () => {
         console.log('Seek forward event received');
         setCurrentPosition((prev) =>
-          Math.min(prev + 15, tracks[currentTrack]?.duration ?? 0)
+          Math.min(prev + 15, sound.current?.getDuration() ?? 0)
         );
       }
     );
@@ -112,7 +119,7 @@ export default function App() {
       seekForwardListener.remove();
       seekBackwardListener.remove();
     };
-  }, [isPlaying]);
+  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     MediaControls.setControlEnabled('play', true);
@@ -126,6 +133,8 @@ export default function App() {
 
     // Audio Interruptions aktivieren
     MediaControls.enableAudioInterruption(true).catch(console.error);
+
+    Sound.setCategory('Playback', true);
   }, []);
 
   // Simuliere Playback Progress
@@ -135,7 +144,7 @@ export default function App() {
       interval = setInterval(() => {
         setCurrentPosition((prev) => {
           const newPosition = prev + 1;
-          if (newPosition >= (tracks[currentTrack]?.duration ?? 0)) {
+          if (sound.current && newPosition >= sound.current.getDuration()) {
             // Auto next track
             const nextTrackIndex = (currentTrack + 1) % tracks.length;
             setCurrentTrack(nextTrackIndex);
@@ -148,23 +157,38 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack]);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const track = tracks[currentTrack];
     if (track) {
-      MediaControls.updateMetadata({
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-        position: currentPosition,
-        isPlaying: !isPlaying,
-        artwork: track.artwork,
-      }).catch(console.error);
+      if (sound.current === null) {
+        await new Promise<void>((resolve, reject) => {
+          sound.current = new Sound(track.url, undefined, (error) => {
+            if (error) {
+              return reject(error);
+            }
+            resolve();
+          });
+        });
+      }
+
+      sound.current?.getCurrentTime((position) => {
+        MediaControls.updateMetadata({
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          duration: sound.current?.getDuration(),
+          position,
+          isPlaying: !isPlaying,
+          artwork: track.artwork,
+        }).catch(console.error);
+      });
     }
     if (isPlaying) {
       setIsPlaying(false);
+      sound.current?.pause();
     } else {
       setIsPlaying(true);
+      sound.current?.play();
     }
   };
 
@@ -209,7 +233,8 @@ export default function App() {
 
       <View style={styles.timeInfo}>
         <Text style={styles.timeText}>
-          {formatTime(currentPosition)} / {formatTime(track?.duration ?? 0)}
+          {formatTime(currentPosition)} /{' '}
+          {formatTime(sound.current?.getDuration() ?? 0)}
         </Text>
         <Text style={styles.statusText}>
           Status: {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
