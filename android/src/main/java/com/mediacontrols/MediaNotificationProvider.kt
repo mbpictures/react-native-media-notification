@@ -48,15 +48,12 @@ class MediaNotificationProvider(private val context: Context) : MediaNotificatio
         return try {
             // Get the launcher activity from the host app
             val packageManager = context.packageManager
-            val launchIntent = packageManager.getLaunchIntentForPackage(context.packageName)
-
-            launchIntent?.let { intent ->
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-
+            val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+            intent?.let {
                 PendingIntent.getActivity(
                     context,
                     0,
-                    intent,
+                    it,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             }

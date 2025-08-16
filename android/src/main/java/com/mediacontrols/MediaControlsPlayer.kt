@@ -37,47 +37,20 @@ class MediaControlsPlayer(
     // Control states
     private val enabledControls = mutableMapOf<Controls, Boolean>()
 
-    // Player listener to track state changes
-    private val playerListener = object : Player.Listener {
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            android.util.Log.d("MediaControlsPlayer", "onPlayWhenReadyChanged: $playWhenReady, reason: $reason")
-            //emitPlaybackStateChanged(playWhenReady)
-        }
-
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            android.util.Log.d("MediaControlsPlayer", "onPlaybackStateChanged: $playbackState, playWhenReady: $playWhenReady")
-            val isPlaying = playbackState == Player.STATE_READY && playWhenReady
-            //emitPlaybackStateChanged(isPlaying)
-        }
-
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            android.util.Log.d("MediaControlsPlayer", "onIsPlayingChanged: $isPlaying")
-            //emitPlaybackStateChanged(isPlaying)
-        }
-
-        override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
-        ) {
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                emitSeekEvent(newPosition.positionMs)
-            }
-        }
-    }
-
-    init {
-        // Add listener to track state changes from external sources (notifications, etc.)
-        addListener(playerListener)
-    }
-
     override fun getState(): State = currentState
 
-    fun getListener(): Player.Listener = playerListener
-
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        if (playWhenReady && audioInterruptionEnabled) {
+            audioFocusListener.requestAudioFocus()
+        }
+
         updateState { builder ->
-            builder.setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            builder
+                .setPlayWhenReady(
+                    playWhenReady,
+                    Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+                )
+                .setContentPositionMs(currentState.contentPositionMsSupplier.get())
         }
 
         // Emit event to React Native
@@ -160,6 +133,10 @@ class MediaControlsPlayer(
         module.sendEvent(Controls.SHUFFLE, null)
     }
 
+    fun emitRepeatClicked() {
+        module.sendEvent(Controls.REPEAT_MODE, null)
+    }
+
     // Custom methods for React Native integration
     fun updateMetadata(metadata: MediaTrackMetadata) {
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
@@ -173,6 +150,9 @@ class MediaControlsPlayer(
             .setArtist(metadata.artist)
             .setAlbumTitle(metadata.album)
             .setDurationMs(metadata.duration?.times(1000)?.toLong())
+            .setIsPlayable(true)
+            .setIsBrowsable(false)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
             .apply {
                 metadata.artwork?.let { artworkUrl ->
                     setArtworkUri(artworkUrl.toUri())
@@ -180,15 +160,20 @@ class MediaControlsPlayer(
             }
             .build()
 
+        // Create unique media ID for Android Auto
+        val mediaId = "${metadata.title}_${metadata.artist}".replace(" ", "_")
+
         val mediaItem = MediaItem.Builder()
-            .setMediaId(metadata.title) // Use title as media ID
+            .setMediaId(mediaId)
+            .setUri("content://media/external/audio/media/1") // Placeholder URI for Android Auto
             .setMediaMetadata(mediaMetadata)
             .build()
 
-        val mediaItemData = MediaItemData.Builder(metadata.title)
+        val mediaItemData = MediaItemData.Builder(mediaId)
             .setMediaItem(mediaItem)
             .setDefaultPositionUs(metadata.position?.times(1_000_000)?.toLong() ?: 0)
             .setDurationUs(metadata.duration?.times(1_000_000)?.toLong() ?: androidx.media3.common.C.TIME_UNSET)
+            .setIsSeekable(true)
             .build()
 
         updateState { builder ->
@@ -199,9 +184,7 @@ class MediaControlsPlayer(
                     metadata.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(
-                    if (metadata.isPlaying == true) Player.STATE_READY else Player.STATE_IDLE
-                )
+                .setPlaybackState(Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(metadata.repeatMode)
                 .setShuffleModeEnabled(metadata.shuffleMode)
@@ -262,6 +245,13 @@ class MediaControlsPlayer(
                     add(CustomCommandButton.SHUFFLE_OFF.commandButton)
                 }
             }
+            if (isControlEnabled(Controls.REPEAT_MODE)) {
+                when (state.repeatMode) {
+                    REPEAT_MODE_OFF -> add(CustomCommandButton.REPEAT_OFF.commandButton)
+                    REPEAT_MODE_ONE -> add(CustomCommandButton.REPEAT_ONE.commandButton)
+                    REPEAT_MODE_ALL -> add(CustomCommandButton.REPEAT_ALL.commandButton)
+                }
+            }
             if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
             if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
         }
@@ -313,9 +303,6 @@ class MediaControlsPlayer(
     }
 
     fun cleanup() {
-        Handler(applicationLooper).post {
-            removeListener(playerListener)
-        }
         scope.cancel()
     }
 }

@@ -43,7 +43,8 @@ class MediaControlsService : MediaSessionService() {
     }
 
     override fun onBind(intent: Intent?): IBinder {
-        return if (intent?.action == "androidx.media3.session.MediaSessionService") {
+        return if (intent?.action == "androidx.media3.session.MediaSessionService" ||
+                   intent?.action == "android.media.browse.MediaBrowserService") {
             super.onBind(intent)!!
         } else {
             binder
@@ -53,6 +54,11 @@ class MediaControlsService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
+        // TODO: handle headless service with HeadlessJsTask
+        if (player == null || reactContext == null) {
+            return
+        }
+
         // Create notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createNotificationChannel()
@@ -61,16 +67,18 @@ class MediaControlsService : MediaSessionService() {
         // Create media session
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(MediaSessionCallback())
-            .setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+            .setId("MediaControlsSession")
             .build()
+
+        updateCustomLayout()
 
         player?.addListener(object : Player.Listener {
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+                updateCustomLayout()
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
-                mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+                updateCustomLayout()
             }
         })
 
@@ -80,6 +88,10 @@ class MediaControlsService : MediaSessionService() {
         setupMediaController()
 
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
+    }
+
+    private fun updateCustomLayout() {
+        mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
     }
 
     private fun setupMediaController() {
@@ -92,71 +104,10 @@ class MediaControlsService : MediaSessionService() {
             controllerFuture.addListener({
                 try {
                     mediaController = controllerFuture.get()
-                    mediaController?.addListener(player!!.getListener())
                 } catch (e: Exception) {
                     android.util.Log.e("MediaControlsService", "Failed to create MediaController", e)
                 }
             }, androidx.core.content.ContextCompat.getMainExecutor(this))
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val keyEvent: KeyEvent? = intent!!.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
-
-        keyEvent?.let { handleNotificationAction(it) }
-
-        return super.onStartCommand(intent, flags, startId)
-    }
-
-    private fun handleNotificationAction(action: KeyEvent) {
-        val module = reactContext?.getNativeModule(MediaControlsModule::class.java)
-        val player = player
-
-        when (action.keyCode) {
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                player?.let { p ->
-                    if (p.isPlaying && p.isControlEnabled(Controls.PAUSE)) {
-                        p.pause()
-                        module?.sendEvent(Controls.PAUSE, null)
-                    } else if (!p.isPlaying && p.isControlEnabled(Controls.PLAY)) {
-                        p.play()
-                        module?.sendEvent(Controls.PLAY, null)
-                    }
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                if (player?.isControlEnabled(Controls.NEXT) == true) {
-                    module?.sendEvent(Controls.NEXT, null)
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                if (player?.isControlEnabled(Controls.PREVIOUS) == true) {
-                    module?.sendEvent(Controls.PREVIOUS, null)
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                if (player?.isControlEnabled(Controls.SEEK_BACKWARD) == true) {
-                    val currentPosition = player.currentPosition
-                    val newPosition = (currentPosition - 15000).coerceAtLeast(0)
-                    player.seekTo(newPosition)
-                    module?.sendEvent(Controls.SEEK_BACKWARD, (newPosition / 1000).toInt())
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                if (player?.isControlEnabled(Controls.SEEK_FORWARD) == true) {
-                    val currentPosition = player.currentPosition
-                    val duration = player.duration
-                    val newPosition = (currentPosition + 15000).coerceAtMost(duration)
-                    player.seekTo(newPosition)
-                    module?.sendEvent(Controls.SEEK_FORWARD, (newPosition / 1000).toInt())
-                }
-            }
-            KeyEvent.KEYCODE_MEDIA_STOP -> {
-                if (player?.isControlEnabled(Controls.STOP) == true) {
-                    player.stop()
-                    module?.sendEvent(Controls.STOP, null)
-                }
-            }
         }
     }
 
@@ -246,12 +197,12 @@ class MediaControlsService : MediaSessionService() {
                     player?.seekBack()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
-                CustomCommandButton.SHUFFLE_ON.customAction -> {
+                CustomCommandButton.SHUFFLE_ON.customAction, CustomCommandButton.SHUFFLE_OFF.customAction -> {
                     player?.emitShuffleClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
-                CustomCommandButton.SHUFFLE_OFF.customAction -> {
-                    player?.emitShuffleClicked()
+                CustomCommandButton.REPEAT_ONE.customAction, CustomCommandButton.REPEAT_OFF.customAction, CustomCommandButton.REPEAT_ALL.customAction -> {
+                    player?.emitRepeatClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))

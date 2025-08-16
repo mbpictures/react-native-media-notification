@@ -31,7 +31,29 @@ cd ios && pod install
 
 ### Android
 
-No additional setup required.
+#### Android Auto
+To enable Android Auto support, you need to add the following in the application tag of your `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.yourapp">
+    <!--...-->
+    <application>
+        <!--...-->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+    </application>
+</manifest>
+```
+
+And create the file `android/app/src/main/res/xml/automotive_app_desc.xml` with the following content:
+
+```xml
+<automotiveApp>
+  <uses name="media"/>
+</automotiveApp>
+```
 
 #### Customize Appearance
 
@@ -79,7 +101,9 @@ await MediaControls.updateMetadata({
   duration: 240, // in seconds
   position: 30,  // current position in seconds
   isPlaying: true,
-  artwork: 'https://example.com/artwork.jpg'
+  artwork: 'https://example.com/artwork.jpg',
+  shuffle: false, // optional, default is false
+  repeat: 'one',  // optional, default is 'off', can be 'all', 'one', or 'off'
 });
 ```
 
@@ -90,6 +114,8 @@ await MediaControls.updateMetadata({
 MediaControls.addEventListener('play', () => {});
 MediaControls.addEventListener('pause', () => {});
 MediaControls.addEventListener('stop', () => {});
+MediaControls.addEventListener('shuffle', () => {});
+MediaControls.addEventListener('repeatMode', () => {});
 
 // Navigation
 MediaControls.addEventListener('skipToNext', () => {});
@@ -151,6 +177,8 @@ interface MediaTrackMetadata {
   artwork?: string;     // URL for album artwork
   position?: number;    // current position in seconds
   isPlaying?: boolean;
+  shuffle?: boolean;    // optional, default is false
+  repeat?: 'off' | 'all' | 'one'; // optional, default is
 }
 
 type MediaControlEvent =
@@ -164,11 +192,11 @@ type MediaControlEvent =
   | 'seek';
 
 type MediaControlEventData = {
-  position?: number; // für seek events
+  position?: number; // for seek events
 };
 ```
 
-## Plattform-spezifische Hinweise
+## Platform specific notes
 
 ### Android
 
