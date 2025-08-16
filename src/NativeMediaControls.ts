@@ -44,6 +44,9 @@ export interface Spec extends TurboModule {
   // Audio interruption handling
   enableAudioInterruption(enabled: boolean): Promise<void>;
 
+  // Audio session activation
+  enableBackgroundMode(enabled: boolean): void;
+
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;
 }
