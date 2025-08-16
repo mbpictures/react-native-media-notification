@@ -96,6 +96,10 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun enableBackgroundMode(enabled: Boolean) {
+    // NOOP on android
+  }
+
   @ReactMethod
   fun getControlsEnabled(promise: Promise) {
     try {
