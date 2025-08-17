@@ -5,6 +5,8 @@
 @interface MediaControls ()
 @property (nonatomic, assign) BOOL audioInterruptionEnabled;
 @property (nonatomic, assign) BOOL hasListeners;
+@property (nonatomic, assign) BOOL audioInterrupted;
+@property (nonatomic, assign) BOOL explictlyPaused;
 @end
 
 @implementation MediaControls
@@ -15,7 +17,6 @@ RCT_EXPORT_MODULE()
     self = [super init];
     if (self) {
         _audioInterruptionEnabled = NO;
-        _hasListeners = NO;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioHardwareRouteChanged:) name:AVAudioSessionRouteChangeNotification object:nil];
         [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
@@ -23,7 +24,6 @@ RCT_EXPORT_MODULE()
 }
 
 - (void)stopObserving {
-    _hasListeners = NO;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -79,7 +79,7 @@ RCT_EXPORT_METHOD(setControlEnabled:(NSString*)name enabled:(BOOL)enabled) {
 RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::MediaTrackMetadata &)metadata
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-  
+
     MPNowPlayingInfoCenter *_nowPlayingCenter = [MPNowPlayingInfoCenter defaultCenter];
 
     @try {
@@ -110,12 +110,20 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::MediaTrackMetadata &)
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
 
         _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
-      
+
         if (@available(iOS 11.0, *)) {
+            if (!self.audioInterrupted) {
+                self.explictlyPaused = false;
+            }
+
             if (metadata.isPlaying()) {
                 _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePlaying;
             } else {
                 _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePaused;
+
+                if (!self.audioInterrupted) {
+                    self.explictlyPaused = true;
+                }
             }
         }
 
@@ -163,7 +171,7 @@ RCT_EXPORT_METHOD(enableAudioInterruption:(BOOL)enabled
     @try {
         _audioInterruptionEnabled = enabled;
 
-        if (enabled && _hasListeners) {
+        if (enabled) {
             [[NSNotificationCenter defaultCenter] addObserver:self
                                                      selector:@selector(audioSessionInterrupted:)
                                                          name:AVAudioSessionInterruptionNotification
@@ -241,13 +249,16 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
 - (void)audioSessionInterrupted:(NSNotification *)notification {
     if (!_audioInterruptionEnabled) return;
 
-    NSNumber *interruptionType = notification.userInfo[AVAudioSessionInterruptionTypeKey];
+    NSInteger interruptionType = [notification.userInfo[AVAudioSessionInterruptionTypeKey] integerValue];
 
-    if (interruptionType.integerValue == AVAudioSessionInterruptionTypeBegan) {
-        [self emitEvent:@"pause" position:nil];
-    } else if (interruptionType.integerValue == AVAudioSessionInterruptionTypeEnded) {
-        NSNumber *interruptionOptions = notification.userInfo[AVAudioSessionInterruptionOptionKey];
-        if (interruptionOptions.integerValue == AVAudioSessionInterruptionOptionShouldResume) {
+    if (interruptionType == AVAudioSessionInterruptionTypeBegan) {
+        self.audioInterrupted = true;
+        if (!self.explictlyPaused) {
+            [self emitEvent:@"pause" position:nil];
+        }
+    } else if (interruptionType == AVAudioSessionInterruptionTypeEnded) {
+        self.audioInterrupted = false;
+        if (!self.explictlyPaused) {
             [self emitEvent:@"play" position:nil];
         }
     }
