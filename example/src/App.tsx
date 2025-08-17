@@ -134,7 +134,7 @@ export default function App() {
     MediaControls.setControlEnabled('seekBackward', true);
     MediaControls.setControlEnabled('stop', true);
 
-    // Audio Interruptions aktivieren
+    // enable audio interruptions
     MediaControls.enableAudioInterruption(true).catch(console.error);
     MediaControls.enableBackgroundMode(true);
 
