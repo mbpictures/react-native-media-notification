@@ -35,10 +35,6 @@ export default function App() {
   const [duration, setDuration] = useState(0);
 
   const handleSetCurrentTrack = (index: number) => {
-    if (sound.current) {
-      sound.current.stop();
-      sound.current = null;
-    }
     const track = tracks[index];
     if (!track) return;
     MediaControls.updateMetadata({
