@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Button, Text, StyleSheet } from 'react-native';
+import { View, Button, Text, StyleSheet, Alert } from 'react-native';
 import * as MediaControls from 'react-native-media-controls';
 import Sound from 'react-native-sound';
 
@@ -32,6 +32,7 @@ export default function App() {
   const [currentPosition, setCurrentPosition] = useState(0);
   const [currentTrack, setCurrentTrack] = useState(0);
   const sound = useRef<Sound | null>(null);
+  const [duration, setDuration] = useState(0);
 
   const handleSetCurrentTrack = (index: number) => {
     if (sound.current) {
@@ -58,11 +59,13 @@ export default function App() {
     const playListener = MediaControls.addEventListener('play', () => {
       console.log('Play event received');
       setIsPlaying(true);
+      sound.current?.play(handleFinished);
     });
 
     const pauseListener = MediaControls.addEventListener('pause', () => {
       console.log('Pause event received');
       setIsPlaying(false);
+      sound.current?.pause();
     });
 
     const stopListener = MediaControls.addEventListener('stop', () => {
@@ -86,7 +89,7 @@ export default function App() {
     const seekListener = MediaControls.addEventListener('seek', (data) => {
       console.log('Seek event received, position:', data?.position);
       if (data?.position) {
-        setCurrentPosition(data.position);
+        sound.current?.setCurrentTime(data.position);
       }
     });
 
@@ -94,9 +97,11 @@ export default function App() {
       'seekForward',
       () => {
         console.log('Seek forward event received');
-        setCurrentPosition((prev) =>
-          Math.min(prev + 15, sound.current?.getDuration() ?? 0)
-        );
+        sound.current?.getCurrentTime((position) => {
+          setCurrentPosition(
+            Math.min(position + 15, sound.current?.getDuration() ?? 0)
+          );
+        });
       }
     );
 
@@ -104,7 +109,9 @@ export default function App() {
       'seekBackward',
       () => {
         console.log('Seek backward event received');
-        setCurrentPosition((prev) => Math.max(prev - 15, 0));
+        sound.current?.getCurrentTime((position) => {
+          setCurrentPosition(Math.min(position - 15, 0));
+        });
       }
     );
 
@@ -133,50 +140,48 @@ export default function App() {
 
     // Audio Interruptions aktivieren
     MediaControls.enableAudioInterruption(true).catch(console.error);
+    MediaControls.enableBackgroundMode(true);
 
     Sound.setCategory('Playback', true);
   }, []);
 
-  // Simuliere Playback Progress
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setCurrentPosition((prev) => {
-          const newPosition = prev + 1;
-          if (sound.current && newPosition >= sound.current.getDuration()) {
-            // Auto next track
-            const nextTrackIndex = (currentTrack + 1) % tracks.length;
-            setCurrentTrack(nextTrackIndex);
-            return 0;
-          }
-          return newPosition;
-        });
-      }, 1000);
+    const track = tracks[currentTrack];
+    if (!track) return;
+    if (sound.current) {
+      sound.current.release();
     }
+
+    sound.current = new Sound(track.url, undefined, (error, props) => {
+      if (error) {
+        Alert.alert('Error while sounding sound', error);
+        return;
+      }
+      setDuration(props.duration ?? 0);
+    });
+
+    const interval = setInterval(() => {
+      sound.current?.getCurrentTime((position) => {
+        setCurrentPosition(position);
+      });
+    }, 1000);
     return () => clearInterval(interval);
-  }, [isPlaying, currentTrack]);
+  }, [currentTrack]);
+
+  const handleFinished = () => {
+    const nextTrackIndex = (currentTrack + 1) % tracks.length;
+    setCurrentTrack(nextTrackIndex);
+  };
 
   const togglePlayPause = async () => {
     const track = tracks[currentTrack];
     if (track) {
-      if (sound.current === null) {
-        await new Promise<void>((resolve, reject) => {
-          sound.current = new Sound(track.url, undefined, (error) => {
-            if (error) {
-              return reject(error);
-            }
-            resolve();
-          });
-        });
-      }
-
       sound.current?.getCurrentTime((position) => {
         MediaControls.updateMetadata({
           title: track.title,
           artist: track.artist,
           album: track.album,
-          duration: sound.current?.getDuration(),
+          duration: sound.current?.getDuration() ?? 0,
           position,
           isPlaying: !isPlaying,
           artwork: track.artwork,
@@ -188,7 +193,7 @@ export default function App() {
       sound.current?.pause();
     } else {
       setIsPlaying(true);
-      sound.current?.play();
+      sound.current?.play(handleFinished);
     }
   };
 
@@ -197,6 +202,7 @@ export default function App() {
       setIsPlaying(false);
       setCurrentPosition(0);
       await MediaControls.stopMediaNotification();
+      sound.current?.stop();
     } catch (error) {
       console.error('Error while stopping: ', error);
     }
@@ -233,8 +239,7 @@ export default function App() {
 
       <View style={styles.timeInfo}>
         <Text style={styles.timeText}>
-          {formatTime(currentPosition)} /{' '}
-          {formatTime(sound.current?.getDuration() ?? 0)}
+          {formatTime(currentPosition)} / {formatTime(duration)}
         </Text>
         <Text style={styles.statusText}>
           Status: {isPlaying ? '▶️ Playing' : '⏸️ Paused'}
