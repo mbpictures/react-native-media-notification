@@ -158,6 +158,10 @@ Stops media notification and removes audio focus (if enabled)
 
 Enable or disable audio interruption handling. When enabled, the media controls will respond to audio interruptions (like incoming calls) by pausing playback and resuming when the interruption ends.
 
+#### `enableBackgroundMode(enabled: boolean): Promise<void>`
+
+**iOS ONLY**. Enable or disable background mode for iOS.
+
 #### `addEventListener(event: MediaControlEvent, handler: Function): EventSubscription`
 
 Registers an event listener for a specific media control event. Returns a function to remove the listener.
