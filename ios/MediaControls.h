@@ -1,5 +1,5 @@
 #import <MediaControlsSpec/MediaControlsSpec.h>
 
-@interface MediaControls : NSObject <NativeMediaControlsSpec>
+@interface MediaControls : NativeMediaControlsSpecBase <NativeMediaControlsSpec>
 
 @end

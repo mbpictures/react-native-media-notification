@@ -46,6 +46,14 @@ export async function enableAudioInterruption(enabled: boolean): Promise<void> {
   return MediaControls.enableAudioInterruption(enabled);
 }
 
+/**
+ * Activates the audio session for media playback.
+ * Call this method before starting media playback to ensure proper Control Center integration.
+ */
+export function enableBackgroundMode(enabled: boolean): void {
+  MediaControls.enableBackgroundMode(enabled);
+}
+
 export function setControlEnabled(name: MediaControl, enabled: boolean): void {
   if (!ALL_MEDIA_EVENTS.includes(name)) {
     throw new Error(`Unknown media control event: ${name}`);
