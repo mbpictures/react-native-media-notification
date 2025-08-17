@@ -47,6 +47,8 @@ export interface Spec extends TurboModule {
   // Audio session activation
   enableBackgroundMode(enabled: boolean): void;
 
+  shutdown(): void;
+
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;
 }

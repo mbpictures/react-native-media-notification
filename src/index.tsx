@@ -61,6 +61,10 @@ export function setControlEnabled(name: MediaControl, enabled: boolean): void {
   MediaControls.setControlEnabled(name, enabled);
 }
 
+export function shutdown(): void {
+  MediaControls.shutdown();
+}
+
 /**
  * Register an event listener for media control events.
  */
