@@ -100,6 +100,10 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     // NOOP on android
   }
 
+  override fun shutdown() {
+    this.stopMediaService();
+  }
+
   @ReactMethod
   fun getControlsEnabled(promise: Promise) {
     try {
