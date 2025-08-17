@@ -129,7 +129,7 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::MediaTrackMetadata &)
 
 
         // Load artwork if provided
-        if (false) {
+        if (metadata.artwork().length > 0) {
             NSString *artworkURL = metadata.artwork();
             [self loadArtworkFromURL:artworkURL completion:^(UIImage *image) {
                 if (!image) {
