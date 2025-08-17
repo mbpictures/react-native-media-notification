@@ -1,12 +1,5 @@
-#import <React/RCTBridgeModule.h>
-#import <React/RCTEventEmitter.h>
+#import <MediaControlsSpec/MediaControlsSpec.h>
 
-#ifdef RCT_NEW_ARCH_ENABLED
-#import "MediaControlsSpec.h"
-
-@interface MediaControls : RCTEventEmitter <NativeMediaControlsSpec>
-#else
-@interface MediaControls : RCTEventEmitter <RCTBridgeModule>
-#endif
+@interface MediaControls : NativeMediaControlsSpecBase <NativeMediaControlsSpec>
 
 @end

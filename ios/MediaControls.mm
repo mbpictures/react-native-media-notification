@@ -3,8 +3,6 @@
 #import <AVFoundation/AVFoundation.h>
 
 @interface MediaControls ()
-@property (nonatomic, strong) MPNowPlayingInfoCenter *nowPlayingCenter;
-@property (nonatomic, strong) MPRemoteCommandCenter *commandCenter;
 @property (nonatomic, assign) BOOL audioInterruptionEnabled;
 @property (nonatomic, assign) BOOL hasListeners;
 @end
@@ -16,59 +14,12 @@ RCT_EXPORT_MODULE()
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _nowPlayingCenter = [MPNowPlayingInfoCenter defaultCenter];
-        _commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
         _audioInterruptionEnabled = NO;
         _hasListeners = NO;
-        [self setupRemoteCommands];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioHardwareRouteChanged:) name:AVAudioSessionRouteChangeNotification object:nil];
+        [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
     return self;
-}
-
-- (void)setupRemoteCommands {
-    // Play command
-    [_commandCenter.playCommand addTarget:self action:@selector(handlePlayCommand:)];
-    _commandCenter.playCommand.enabled = YES;
-
-    // Pause command
-    [_commandCenter.pauseCommand addTarget:self action:@selector(handlePauseCommand:)];
-    _commandCenter.pauseCommand.enabled = YES;
-
-    // Stop command
-    [_commandCenter.stopCommand addTarget:self action:@selector(handleStopCommand:)];
-    _commandCenter.stopCommand.enabled = YES;
-
-    // Next track command
-    [_commandCenter.nextTrackCommand addTarget:self action:@selector(handleNextTrackCommand:)];
-    _commandCenter.nextTrackCommand.enabled = YES;
-
-    // Previous track command
-    [_commandCenter.previousTrackCommand addTarget:self action:@selector(handlePreviousTrackCommand:)];
-    _commandCenter.previousTrackCommand.enabled = YES;
-
-    // Seek forward command
-    [_commandCenter.seekForwardCommand addTarget:self action:@selector(handleSeekForwardCommand:)];
-    _commandCenter.seekForwardCommand.enabled = YES;
-    _commandCenter.seekForwardCommand.preferredIntervals = @[@15];
-
-    // Seek backward command
-    [_commandCenter.seekBackwardCommand addTarget:self action:@selector(handleSeekBackwardCommand:)];
-    _commandCenter.seekBackwardCommand.enabled = YES;
-    _commandCenter.seekBackwardCommand.preferredIntervals = @[@15];
-
-    // Change playback position command
-    [_commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(handleChangePlaybackPositionCommand:)];
-    _commandCenter.changePlaybackPositionCommand.enabled = YES;
-}
-
-- (void)startObserving {
-    _hasListeners = YES;
-    if (_audioInterruptionEnabled) {
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(audioSessionInterrupted:)
-                                                     name:AVAudioSessionInterruptionNotification
-                                                   object:nil];
-    }
 }
 
 - (void)stopObserving {
@@ -82,52 +33,110 @@ RCT_EXPORT_MODULE()
 
 #pragma mark - React Native Methods
 
-RCT_EXPORT_METHOD(updateMetadata:(NSDictionary *)metadata
+RCT_EXPORT_METHOD(setControlEnabled:(NSString*)name enabled:(BOOL)enabled) {
+  MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
+  if ([name  isEqual: @"play"]) {
+    [commandCenter.playCommand addTarget:self action:@selector(handlePlayCommand:)];
+    commandCenter.playCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"pause"]) {
+    [commandCenter.pauseCommand addTarget:self action:@selector(handlePauseCommand:)];
+    commandCenter.pauseCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"stop"]) {
+    [commandCenter.stopCommand addTarget:self action:@selector(handleStopCommand:)];
+    commandCenter.stopCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"skipToNext"]) {
+    [commandCenter.nextTrackCommand addTarget:self action:@selector(handleNextTrackCommand:)];
+    commandCenter.nextTrackCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"skipToPrevious"]) {
+    [commandCenter.previousTrackCommand addTarget:self action:@selector(handlePreviousTrackCommand:)];
+    commandCenter.previousTrackCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"seekForward"]) {
+    [commandCenter.seekForwardCommand addTarget:self action:@selector(handleSeekForwardCommand:)];
+    commandCenter.seekForwardCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"seekBackward"]) {
+    [commandCenter.seekBackwardCommand addTarget:self action:@selector(handleSeekBackwardCommand:)];
+    commandCenter.seekBackwardCommand.enabled = enabled;
+  }
+
+  if ([name  isEqual: @"seek"]) {
+    [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(handleChangePlaybackPositionCommand:)];
+    commandCenter.changePlaybackPositionCommand.enabled = enabled;
+  }
+}
+
+RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::MediaTrackMetadata &)metadata
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
+  
+    MPNowPlayingInfoCenter *_nowPlayingCenter = [MPNowPlayingInfoCenter defaultCenter];
 
     @try {
         NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary dictionary];
 
-        if (metadata[@"title"]) {
-            nowPlayingInfo[MPMediaItemPropertyTitle] = metadata[@"title"];
+        if (metadata.title().length > 0) {
+            nowPlayingInfo[MPMediaItemPropertyTitle] = metadata.title();
         }
 
-        if (metadata[@"artist"]) {
-            nowPlayingInfo[MPMediaItemPropertyArtist] = metadata[@"artist"];
+        if (metadata.artist().length > 0) {
+            nowPlayingInfo[MPMediaItemPropertyArtist] = metadata.artist();
         }
 
-        if (metadata[@"album"]) {
-            nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = metadata[@"album"];
+        if (metadata.album().length > 0) {
+            nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = metadata.album();
         }
 
-        if (metadata[@"duration"]) {
-            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = metadata[@"duration"];
+        if (metadata.duration().has_value()) {
+            double duration = metadata.duration().value();
+            nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = [NSNumber numberWithDouble:duration];
         }
 
-        if (metadata[@"position"]) {
-            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = metadata[@"position"];
+        if (metadata.position().has_value()) {
+            double position = metadata.position().value();
+            nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = [NSNumber numberWithDouble:position];
         }
 
-        if (metadata[@"isPlaying"]) {
-            BOOL isPlaying = [metadata[@"isPlaying"] boolValue];
-            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = @(isPlaying ? 1.0 : 0.0);
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
+
+        _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
+      
+        if (@available(iOS 11.0, *)) {
+            if (metadata.isPlaying()) {
+                _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePlaying;
+            } else {
+                _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePaused;
+            }
         }
+
 
         // Load artwork if provided
-        if (metadata[@"artwork"]) {
-            NSString *artworkURL = metadata[@"artwork"];
+        if (false) {
+            NSString *artworkURL = metadata.artwork();
             [self loadArtworkFromURL:artworkURL completion:^(UIImage *image) {
-                if (image) {
+                if (!image) {
+                    return;
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
                     MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:image.size requestHandler:^UIImage * _Nonnull(CGSize size) {
                         return image;
                     }];
-                    nowPlayingInfo[MPMediaItemPropertyArtwork] = artwork;
-                }
-                _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
+                    NSMutableDictionary *mediaDict = (center.nowPlayingInfo != nil) ? [[NSMutableDictionary alloc] initWithDictionary: center.nowPlayingInfo] : [NSMutableDictionary dictionary];
+                    [mediaDict setValue:artwork forKey:MPMediaItemPropertyArtwork];
+                    center.nowPlayingInfo = mediaDict;
+                });
             }];
-        } else {
-            _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
         }
 
         resolve(nil);
@@ -140,7 +149,7 @@ RCT_EXPORT_METHOD(updateMetadata:(NSDictionary *)metadata
 RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     @try {
-        _nowPlayingCenter.nowPlayingInfo = nil;
+        [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
         resolve(nil);
     }
     @catch (NSException *exception) {
@@ -172,47 +181,59 @@ RCT_EXPORT_METHOD(enableAudioInterruption:(BOOL)enabled
     }
 }
 
-#pragma mark - Remote Command Handlers
+RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    [session setCategory: AVAudioSessionCategoryPlayback error: nil];
+    [session setActive: enabled error: nil];
+}
 
 - (MPRemoteCommandHandlerStatus)handlePlayCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"play" body:nil];
+    [self emitEvent:@"play" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handlePauseCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"pause" body:nil];
+    [self emitEvent:@"pause" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleStopCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"stop" body:nil];
+    [self emitEvent:@"stop" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleNextTrackCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"skipToNext" body:nil];
+    [self emitEvent:@"skipToNext" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handlePreviousTrackCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"skipToPrevious" body:nil];
+    [self emitEvent:@"skipToPrevious" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleSeekForwardCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"seekForward" body:nil];
+    [self emitEvent:@"seekForward" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleSeekBackwardCommand:(MPRemoteCommandEvent *)event {
-    [self sendEventWithName:@"seekBackward" body:nil];
+    [self emitEvent:@"seekBackward" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleChangePlaybackPositionCommand:(MPChangePlaybackPositionCommandEvent *)event {
-    NSDictionary *params = @{@"position": @(event.positionTime)};
-    [self sendEventWithName:@"seek" body:params];
+    [self emitEvent:@"seek" position:[NSNumber numberWithDouble:event.positionTime]];
     return MPRemoteCommandHandlerStatusSuccess;
+}
+
+- (void)emitEvent:(NSString*) name position:(nullable NSNumber*) position {
+  NSMutableDictionary *params = [NSMutableDictionary dictionary];
+  params[@"command"] = name;
+  if (position) {
+    params[@"seekPosition"] = position;
+  }
+  [self emitOnEvent:params];
 }
 
 #pragma mark - Audio Interruption Handler
@@ -223,12 +244,20 @@ RCT_EXPORT_METHOD(enableAudioInterruption:(BOOL)enabled
     NSNumber *interruptionType = notification.userInfo[AVAudioSessionInterruptionTypeKey];
 
     if (interruptionType.integerValue == AVAudioSessionInterruptionTypeBegan) {
-        [self sendEventWithName:@"pause" body:nil];
+        [self emitEvent:@"pause" position:nil];
     } else if (interruptionType.integerValue == AVAudioSessionInterruptionTypeEnded) {
         NSNumber *interruptionOptions = notification.userInfo[AVAudioSessionInterruptionOptionKey];
         if (interruptionOptions.integerValue == AVAudioSessionInterruptionOptionShouldResume) {
-            [self sendEventWithName:@"play" body:nil];
+            [self emitEvent:@"play" position:nil];
         }
+    }
+}
+
+- (void)audioHardwareRouteChanged:(NSNotification *)notification {
+    NSInteger routeChangeReason = [notification.userInfo[AVAudioSessionRouteChangeReasonKey] integerValue];
+    if (routeChangeReason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
+        //headphones unplugged or bluetooth device disconnected, iOS will pause audio
+        [self emitEvent:@"pause" position:nil];
     }
 }
 
