@@ -165,6 +165,41 @@ RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
     }
 }
 
+RCT_EXPORT_METHOD(shutdown) {
+    [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo = nil;
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionInterruptionNotification object:nil];
+    _audioInterruptionEnabled = false;
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
+  
+  
+    MPRemoteCommandCenter *remoteCenter = [MPRemoteCommandCenter sharedCommandCenter];
+  
+    [remoteCenter.playCommand removeTarget:self action:@selector(handlePlayCommand:)];
+    remoteCenter.playCommand.enabled = false;
+  
+    [remoteCenter.pauseCommand removeTarget:self action:@selector(handlePauseCommand:)];
+    remoteCenter.pauseCommand.enabled = false;
+    
+    [remoteCenter.stopCommand removeTarget:self action:@selector(handleStopCommand:)];
+    remoteCenter.stopCommand.enabled = false;
+    
+    [remoteCenter.nextTrackCommand removeTarget:self action:@selector(handleNextTrackCommand:)];
+    remoteCenter.nextTrackCommand.enabled = false;
+    
+    [remoteCenter.previousTrackCommand removeTarget:self action:@selector(handlePreviousTrackCommand:)];
+    remoteCenter.previousTrackCommand.enabled = false;
+    
+    [remoteCenter.seekForwardCommand removeTarget:self action:@selector(handleSeekForwardCommand:)];
+    remoteCenter.seekForwardCommand.enabled = false;
+    
+    [remoteCenter.seekBackwardCommand removeTarget:self action:@selector(handleSeekBackwardCommand:)];
+    remoteCenter.seekBackwardCommand.enabled = false;
+    
+    [remoteCenter.changePlaybackPositionCommand removeTarget:self action:@selector(handleChangePlaybackPositionCommand:)];
+    remoteCenter.changePlaybackPositionCommand.enabled = false;
+}
+
+
 RCT_EXPORT_METHOD(enableAudioInterruption:(BOOL)enabled
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
