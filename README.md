@@ -1,6 +1,20 @@
-# React Native Media Controls
+<h1 align="center">
+    Welcome to react-native-media-notification👋<br />
+</h1>
+<h3 align="center">
+    Your React Native library for media notifications and controls
+</h3>
+<p align="center">
+    <a href="LICENSE" target="_blank">
+      <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" />
+    </a>
+    <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/mbpictures/react-native-media-notification/ci.yml?style=for-the-badge" />
+    <a href="https://badge.fury.io/js/react-native-media-notification">
+        <img src="https://img.shields.io/npm/v/react-native-media-notification?style=for-the-badge" alt="npm version">
+    </a>
+</p>
 
-A react native package for media notifications and controls, using AndroidX Media3 for Android and the ControlCenter API for iOS.
+> A react native package for media notifications and controls, using AndroidX Media3 for Android and the ControlCenter API for iOS.
 
 ## Features
 
