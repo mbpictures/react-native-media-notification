@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Button, Text, StyleSheet, Alert } from 'react-native';
-import * as MediaControls from 'react-native-media-controls';
+import * as MediaControls from 'react-native-media-notification';
 import Sound from 'react-native-sound';
 
 const tracks = [

@@ -16,11 +16,11 @@ A react native package for media notifications and controls, using AndroidX Medi
 ## Installation
 
 ```bash
-npm install react-native-media-controls
+npm install react-native-media-notification
 ```
 
 ```bash
-yarn add react-native-media-controls
+yarn add react-native-media-notification
 ```
 
 ### iOS
@@ -71,7 +71,7 @@ If you want to customize the small media notification icon on Android, you can a
 ### Basic Setup
 
 ```typescript
-import * as MediaControls from 'react-native-media-controls';
+import * as MediaControls from 'react-native-media-notification';
 
 // register event listeners
 const removePlayListener = MediaControls.addEventListener('play', () => {

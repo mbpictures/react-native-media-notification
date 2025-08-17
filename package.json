@@ -1,5 +1,5 @@
 {
-  "name": "react-native-media-controls",
+  "name": "react-native-media-notification",
   "version": "0.1.0",
   "description": "Display and manage media style notifications based on react-native-music-control",
   "main": "./lib/module/index.js",
@@ -32,7 +32,7 @@
     "!**/.*"
   ],
   "scripts": {
-    "example": "yarn workspace react-native-media-controls-example",
+    "example": "yarn workspace react-native-media-notification-example",
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
@@ -47,14 +47,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mbpictures/react-native-media-controls.git"
+    "url": "git+https://github.com/mbpictures/react-native-media-notification.git"
   },
   "author": "Marius Butz <mbpictures13@gmail.com> (https://github.com/mbpictures)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mbpictures/react-native-media-controls/issues"
+    "url": "https://github.com/mbpictures/react-native-media-notification/issues"
   },
-  "homepage": "https://github.com/mbpictures/react-native-media-controls#readme",
+  "homepage": "https://github.com/mbpictures/react-native-media-notification#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

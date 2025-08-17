@@ -4392,9 +4392,9 @@ __metadata:
   linkType: hard
 
 "chalk@npm:^5.3.0":
-  version: 5.5.0
-  resolution: "chalk@npm:5.5.0"
-  checksum: 00788e9f072477be4fbefa13c46ab0a078be4bdf598b807cc62ea89f7850902b020bbcafabd7855e3d8ef0ff409ec761e5094c93404cca7fb63c372525d2b4a4
+  version: 5.6.0
+  resolution: "chalk@npm:5.6.0"
+  checksum: 245d4b53c29c88da9e291f318c86b6b3ee65aa81568f9e10fafc984a6ef520412dee513057d07cc0f4614ab5a46cb07a0394fab3794d88d48c89c17b2d8fbf7f
   languageName: node
   linkType: hard
 
@@ -10344,9 +10344,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-media-controls-example@workspace:example":
+"react-native-media-notification-example@workspace:example":
   version: 0.0.0-use.local
-  resolution: "react-native-media-controls-example@workspace:example"
+  resolution: "react-native-media-notification-example@workspace:example"
   dependencies:
     "@babel/core": ^7.25.2
     "@babel/preset-env": ^7.25.3
@@ -10366,9 +10366,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-media-controls@workspace:.":
+"react-native-media-notification@workspace:.":
   version: 0.0.0-use.local
-  resolution: "react-native-media-controls@workspace:."
+  resolution: "react-native-media-notification@workspace:."
   dependencies:
     "@commitlint/config-conventional": ^19.6.0
     "@eslint/compat": ^1.2.7

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-media-controls": ["./src/index"]
+      "react-native-media-notification": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
