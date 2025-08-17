@@ -211,10 +211,10 @@ type MediaControlEventData = {
 
 - Uses MPNowPlayingInfoCenter and MPRemoteCommandCenter
 - Integrates in Control Center and Lock Screen
-- Unterstützt AirPods und andere externe Controls
+- Supports ear bud and other external controls
 - Requires Background Audio Capability for Background Playback
 
-## Lizenz
+## License
 
 MIT
 
