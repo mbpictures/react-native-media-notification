@@ -139,6 +139,8 @@ export default function App() {
     MediaControls.enableBackgroundMode(true);
 
     Sound.setCategory('Playback', true);
+
+    return () => MediaControls.shutdown();
   }, []);
 
   useEffect(() => {
