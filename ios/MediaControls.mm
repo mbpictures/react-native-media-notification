@@ -76,7 +76,7 @@ RCT_EXPORT_METHOD(setControlEnabled:(NSString*)name enabled:(BOOL)enabled) {
   }
 }
 
-RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::MediaTrackMetadata &)metadata
+RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetadata &)metadata
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
 
