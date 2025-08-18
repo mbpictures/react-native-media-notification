@@ -1,6 +1,6 @@
 {
   "name": "react-native-media-notification",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Display and manage media style notifications based on react-native-music-control",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
