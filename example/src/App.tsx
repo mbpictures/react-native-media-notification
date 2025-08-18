@@ -94,7 +94,7 @@ export default function App() {
       () => {
         console.log('Seek forward event received');
         sound.current?.getCurrentTime((position) => {
-          setCurrentPosition(
+          sound.current?.setCurrentTime(
             Math.min(position + 15, sound.current?.getDuration() ?? 0)
           );
         });
@@ -106,7 +106,7 @@ export default function App() {
       () => {
         console.log('Seek backward event received');
         sound.current?.getCurrentTime((position) => {
-          setCurrentPosition(Math.min(position - 15, 0));
+          sound.current?.setCurrentTime(Math.min(position - 15, 0));
         });
       }
     );
