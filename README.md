@@ -149,6 +149,8 @@ MediaControls.addEventListener('duck', () => {}); // reduce volume for interrupt
 MediaControls.addEventListener('unduck', () => {}); // restore volume after interruption
 ```
 
+**Note**: On iOS, seekForward and seekBackward are not fired, even when technically triggered. Instead, a seek event with the corresponding timestamp is fired.
+
 ### Stop Media Notification
 
 ```typescript
