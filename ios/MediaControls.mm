@@ -7,6 +7,10 @@
 @property (nonatomic, assign) BOOL hasListeners;
 @property (nonatomic, assign) BOOL audioInterrupted;
 @property (nonatomic, assign) BOOL explictlyPaused;
+@property (nonatomic, assign) BOOL isSeeking;
+@property (nonatomic, assign) BOOL isBackwardSeeking;
+@property (nonatomic, assign) float seekTime;
+@property (nonatomic, assign) NSTimer* seekTimer;
 @end
 
 @implementation MediaControls
@@ -256,12 +260,29 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
 }
 
 - (MPRemoteCommandHandlerStatus)handleSeekForwardCommand:(MPRemoteCommandEvent *)event {
-    [self emitEvent:@"seekForward" position:nil];
+    if (self.isSeeking) {
+        [self emitEvent:@"seek" position:[NSNumber numberWithFloat:self.seekTime]];
+        self.isSeeking = false;
+        [self.seekTimer invalidate];
+        self.seekTimer = nil;
+        return MPRemoteCommandHandlerStatusSuccess;
+    }
+    self.isSeeking = true;
+    self.isBackwardSeeking = false;
+
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    self.seekTime = [[center.nowPlayingInfo objectForKey:MPNowPlayingInfoPropertyElapsedPlaybackTime] floatValue];
+    self.seekTimer = [NSTimer scheduledTimerWithTimeInterval:0.2  target:self selector:@selector(seekTimerCallback) userInfo:nil repeats:YES];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
 - (MPRemoteCommandHandlerStatus)handleSeekBackwardCommand:(MPRemoteCommandEvent *)event {
-    [self emitEvent:@"seekBackward" position:nil];
+    self.isSeeking = true;
+    self.isBackwardSeeking = true;
+  
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    self.seekTime = [[center.nowPlayingInfo objectForKey:MPNowPlayingInfoPropertyElapsedPlaybackTime] floatValue];
+    self.seekTimer = [NSTimer scheduledTimerWithTimeInterval:0.2  target:self selector:@selector(seekTimerCallback) userInfo:nil repeats:YES];
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
@@ -324,6 +345,15 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
             completion(image);
         });
     });
+}
+
+-(void)seekTimerCallback{
+    self.seekTime += 2 * (self.isBackwardSeeking ? -1 : 1);
+
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    NSMutableDictionary *mediaDict = [[NSMutableDictionary alloc] initWithDictionary: center.nowPlayingInfo];
+    mediaDict[MPNowPlayingInfoPropertyElapsedPlaybackTime] = @(self.seekTime);
+    center.nowPlayingInfo = mediaDict;
 }
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
