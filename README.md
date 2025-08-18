@@ -80,7 +80,9 @@ If you want to customize the small media notification icon on Android, you can a
 </resources>
 ```
 
-## Verwendung
+You can also customize all action icons by overwriting the default icon drawables (e.g. `media3_icon_play`, `media3_icon_pause`, ...)
+
+## Usage
 
 ### Basic Setup
 
@@ -152,6 +154,10 @@ MediaControls.addEventListener('unduck', () => {}); // restore volume after inte
 ```typescript
 await MediaControls.stopMediaNotification();
 ```
+
+## Planned
+- Full Android Auto Support (Headless Tasks, Voice Commands, Media Library)
+- Add more actions/metadata information and better customization
 
 ## API Reference
 
