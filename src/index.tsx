@@ -3,9 +3,17 @@ import MediaControls, {
   type MediaControl,
   type MediaControlEvent,
 } from './NativeMediaControls';
-import type { MediaTrackMetadata } from './NativeMediaControls';
+import type { NativeMediaTrackMetadata } from './NativeMediaControls';
 import { EventEmitter, EventSubscription } from 'fbemitter';
-import { type EventSubscription as NativeEventSubscription } from 'react-native';
+import {
+  type EventSubscription as NativeEventSubscription,
+  Image,
+} from 'react-native';
+import type { ImageSourcePropType } from 'react-native/Libraries/Image/Image';
+
+interface MediaTrackMetadata extends Omit<NativeMediaTrackMetadata, 'artwork'> {
+  artwork?: string | ImageSourcePropType;
+}
 
 export type MediaControlEventData = {
   position?: number; // für seek events
@@ -29,7 +37,10 @@ const setUpNativeEventListener = () => {
 export async function updateMetadata(
   metadata: MediaTrackMetadata
 ): Promise<void> {
-  return MediaControls.updateMetadata(metadata);
+  if (metadata.artwork && typeof metadata.artwork !== 'string') {
+    metadata.artwork = Image.resolveAssetSource(metadata.artwork).uri;
+  }
+  return MediaControls.updateMetadata(metadata as NativeMediaTrackMetadata);
 }
 
 /**

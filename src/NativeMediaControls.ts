@@ -19,7 +19,7 @@ export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
 
 export type MediaControlEvent = MediaControl | 'duck' | 'unDuck';
 
-export interface MediaTrackMetadata {
+export interface NativeMediaTrackMetadata {
   title: string;
   artist: string;
   album?: string;
@@ -38,7 +38,7 @@ export interface NativeEvent {
 
 export interface Spec extends TurboModule {
   setControlEnabled(name: string, enabled: boolean): void;
-  updateMetadata(metadata: MediaTrackMetadata): Promise<void>;
+  updateMetadata(metadata: NativeMediaTrackMetadata): Promise<void>;
   stopMediaNotification(): Promise<void>;
 
   // Audio interruption handling
