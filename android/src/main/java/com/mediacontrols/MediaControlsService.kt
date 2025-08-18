@@ -189,12 +189,20 @@ class MediaControlsService : MediaSessionService() {
                     }
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
+                CustomCommandButton.PREVIOUS.customAction -> {
+                    player?.seekToPreviousMediaItem()
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
                 CustomCommandButton.FORWARD.customAction -> {
                     player?.seekForward()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 CustomCommandButton.REWIND.customAction -> {
                     player?.seekBack()
+                    Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                CustomCommandButton.NEXT.customAction -> {
+                    player?.seekToNextMediaItem()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 CustomCommandButton.SHUFFLE_ON.customAction, CustomCommandButton.SHUFFLE_OFF.customAction -> {

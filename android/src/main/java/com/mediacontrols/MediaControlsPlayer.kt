@@ -238,6 +238,12 @@ class MediaControlsPlayer(
 
     fun getAvailableCustomCommands(): Set<CommandButton> {
         return mutableSetOf<CommandButton>().apply {
+            if (isControlEnabled(Controls.PREVIOUS)) add(CustomCommandButton.PREVIOUS.commandButton)
+            if (isControlEnabled(Controls.NEXT)) add(CustomCommandButton.NEXT.commandButton)
+
+            if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
+            if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
+
             if(isControlEnabled(Controls.SHUFFLE)) {
                 if (state.shuffleModeEnabled) {
                     add(CustomCommandButton.SHUFFLE_ON.commandButton)
@@ -252,8 +258,6 @@ class MediaControlsPlayer(
                     REPEAT_MODE_ALL -> add(CustomCommandButton.REPEAT_ALL.commandButton)
                 }
             }
-            if (isControlEnabled(Controls.SEEK_BACKWARD)) add(CustomCommandButton.REWIND.commandButton)
-            if (isControlEnabled(Controls.SEEK_FORWARD)) add(CustomCommandButton.FORWARD.commandButton)
         }
     }
 
