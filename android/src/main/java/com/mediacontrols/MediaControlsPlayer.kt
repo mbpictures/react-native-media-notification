@@ -1,25 +1,32 @@
 package com.mediacontrols
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.os.Handler
 import android.os.Looper
+import android.webkit.URLUtil
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.CommandButton
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.views.imagehelper.ResourceDrawableIdHelper
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import androidx.core.net.toUri
-import androidx.media3.session.CommandButton
+import java.io.ByteArrayOutputStream
+
 
 @UnstableApi
 class MediaControlsPlayer(
-    reactContext: ReactApplicationContext,
+    private val reactContext: ReactApplicationContext,
     private val module: MediaControlsModule,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
@@ -155,7 +162,7 @@ class MediaControlsPlayer(
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
             .also {
                 this.currentMetadata!!.artwork?.let { artworkUrl ->
-                    it.setArtworkUri(artworkUrl.toUri())
+                    it.setArtwork(artworkUrl)
                 }
             }
             .build()
@@ -209,6 +216,28 @@ class MediaControlsPlayer(
             return this
         }
         return this.setShuffleModeEnabled(enabled)
+    }
+
+    private fun MediaMetadata.Builder.setArtwork(artwork: String?): MediaMetadata.Builder {
+        if (artwork == null) {
+            return this
+        }
+        if (URLUtil.isValidUrl(artwork)) {
+            this.setArtworkUri(artwork.toUri())
+        } else {
+            val helper = ResourceDrawableIdHelper.getInstance()
+            val image = helper.getResourceDrawable(reactContext, artwork)
+
+            val bitmap = if (image is BitmapDrawable) {
+                image.bitmap
+            } else {
+                BitmapFactory.decodeFile(artwork)
+            }
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)
+            this.setArtworkData(stream.toByteArray(), MediaMetadata.PICTURE_TYPE_OTHER)
+        }
+        return this
     }
 
     fun setControlEnabled(controlName: Controls, enabled: Boolean) {
