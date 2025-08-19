@@ -87,17 +87,17 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
     MPNowPlayingInfoCenter *_nowPlayingCenter = [MPNowPlayingInfoCenter defaultCenter];
 
     @try {
-        NSMutableDictionary *nowPlayingInfo = [NSMutableDictionary dictionary];
+        NSMutableDictionary *nowPlayingInfo = [[NSMutableDictionary alloc] initWithDictionary: _nowPlayingCenter.nowPlayingInfo];
 
-        if (metadata.title().length > 0) {
+        if (metadata.title() != nil && metadata.title().length > 0) {
             nowPlayingInfo[MPMediaItemPropertyTitle] = metadata.title();
         }
 
-        if (metadata.artist().length > 0) {
+        if (metadata.artist() != nil && metadata.artist().length > 0) {
             nowPlayingInfo[MPMediaItemPropertyArtist] = metadata.artist();
         }
 
-        if (metadata.album().length > 0) {
+        if (metadata.album() != nil && metadata.album().length > 0) {
             nowPlayingInfo[MPMediaItemPropertyAlbumTitle] = metadata.album();
         }
 
@@ -110,17 +110,20 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
             double position = metadata.position().value();
             nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = [NSNumber numberWithDouble:position];
         }
-
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
+      
+        if (metadata.isPlaying().has_value()) {
+            nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying().value() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
+        }
+        
 
         _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
 
-        if (@available(iOS 11.0, *)) {
+        if (@available(iOS 11.0, *) && metadata.isPlaying().has_value()) {
             if (!self.audioInterrupted) {
                 self.explictlyPaused = false;
             }
 
-            if (metadata.isPlaying()) {
+            if (metadata.isPlaying().value()) {
                 _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePlaying;
             } else {
                 _nowPlayingCenter.playbackState = MPNowPlayingPlaybackStatePaused;
@@ -133,7 +136,7 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
 
 
         // Load artwork if provided
-        if (metadata.artwork().length > 0) {
+        if (metadata.artwork() != nil && metadata.artwork().length > 0) {
             NSString *artworkURL = metadata.artwork();
             [self loadArtworkFromURL:artworkURL completion:^(UIImage *image) {
                 if (!image) {
