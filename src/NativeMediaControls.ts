@@ -20,8 +20,8 @@ export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
 export type MediaControlEvent = MediaControl | 'duck' | 'unDuck';
 
 export interface NativeMediaTrackMetadata {
-  title: string;
-  artist: string;
+  title?: string;
+  artist?: string;
   album?: string;
   duration?: number;
   artwork?: string;
