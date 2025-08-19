@@ -143,19 +143,19 @@ class MediaControlsPlayer(
             audioFocusListener.requestAudioFocus()
         }
 
-        this.currentMetadata = metadata
+        this.currentMetadata = this.currentMetadata?.merge(metadata) ?: metadata
 
         val mediaMetadata = MediaMetadata.Builder()
-            .setTitle(metadata.title)
-            .setArtist(metadata.artist)
-            .setAlbumTitle(metadata.album)
-            .setDurationMs(metadata.duration?.times(1000)?.toLong())
+            .setTitle(this.currentMetadata!!.title)
+            .setArtist(this.currentMetadata!!.artist)
+            .setAlbumTitle(this.currentMetadata!!.album)
+            .setDurationMs(this.currentMetadata!!.duration?.times(1000)?.toLong())
             .setIsPlayable(true)
             .setIsBrowsable(false)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-            .apply {
-                metadata.artwork?.let { artworkUrl ->
-                    setArtworkUri(artworkUrl.toUri())
+            .also {
+                this.currentMetadata!!.artwork?.let { artworkUrl ->
+                    it.setArtworkUri(artworkUrl.toUri())
                 }
             }
             .build()
@@ -171,23 +171,23 @@ class MediaControlsPlayer(
 
         val mediaItemData = MediaItemData.Builder(mediaId)
             .setMediaItem(mediaItem)
-            .setDefaultPositionUs(metadata.position?.times(1_000_000)?.toLong() ?: 0)
-            .setDurationUs(metadata.duration?.times(1_000_000)?.toLong() ?: androidx.media3.common.C.TIME_UNSET)
+            .setDefaultPositionUs(this.currentMetadata!!.position?.times(1_000_000)?.toLong() ?: 0)
+            .setDurationUs(this.currentMetadata!!.duration?.times(1_000_000)?.toLong() ?: androidx.media3.common.C.TIME_UNSET)
             .setIsSeekable(true)
             .build()
 
         updateState { builder ->
             builder.setPlaylist(listOf(mediaItemData))
                 .setCurrentMediaItemIndex(0)
-                .setContentPositionMs(metadata.position?.times(1000)?.toLong() ?: 0)
+                .setContentPositionMs(this.currentMetadata!!.position?.times(1000)?.toLong() ?: 0)
                 .setPlayWhenReady(
-                    metadata.isPlaying ?: false,
+                    this.currentMetadata!!.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
                 .setPlaybackState(Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
-                .setRepeatMode(metadata.repeatMode)
-                .setShuffleModeEnabled(metadata.shuffleMode)
+                .setRepeatMode(this.currentMetadata!!.repeatMode)
+                .setShuffleModeEnabled(this.currentMetadata!!.shuffleMode)
         }
     }
 
@@ -313,8 +313,8 @@ class MediaControlsPlayer(
 
 // Data class for metadata
 data class MediaTrackMetadata(
-    val title: String,
-    val artist: String,
+    val title: String? = null,
+    val artist: String? = null,
     val album: String? = null,
     val duration: Double? = null,
     val artwork: String? = null,
@@ -322,4 +322,17 @@ data class MediaTrackMetadata(
     val isPlaying: Boolean? = null,
     val repeatMode: String? = null,
     val shuffleMode: Boolean? = null
-)
+) {
+
+    fun merge(other: MediaTrackMetadata): MediaTrackMetadata = MediaTrackMetadata(
+        title = other.title ?: this.title,
+        artist = other.artist ?: this.artist,
+        album = other.album ?: this.album,
+        duration = other.duration ?: this.duration,
+        artwork = other.artwork ?: this.artwork,
+        position = other.position ?: this.position,
+        isPlaying = other.isPlaying ?: this.isPlaying,
+        repeatMode = other.repeatMode ?: this.repeatMode,
+        shuffleMode = other.shuffleMode ?: this.shuffleMode
+    )
+}

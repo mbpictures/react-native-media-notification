@@ -58,11 +58,11 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
       ensureServiceStarted()
 
       val trackMetadata = MediaTrackMetadata(
-        title = metadata.getString("title") ?: "",
-        artist = metadata.getString("artist") ?: "",
-        album = metadata.getString("album"),
+        title = if (metadata.hasKey("title")) metadata.getString("title") else null,
+        artist = if (metadata.hasKey("artist")) metadata.getString("artist") else null,
+        album = if (metadata.hasKey("album")) metadata.getString("album") else null,
         duration = if (metadata.hasKey("duration")) metadata.getDouble("duration") else null,
-        artwork = metadata.getString("artwork"),
+        artwork = if (metadata.hasKey("artwork")) metadata.getString("artwork") else null,
         position = if (metadata.hasKey("position")) metadata.getDouble("position") else null,
         isPlaying = if (metadata.hasKey("isPlaying")) metadata.getBoolean("isPlaying") else null,
         shuffleMode = if (metadata.hasKey("shuffle")) metadata.getBoolean("shuffle") else null,
