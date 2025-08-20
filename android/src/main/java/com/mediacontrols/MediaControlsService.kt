@@ -45,7 +45,8 @@ class MediaControlsService : MediaSessionService() {
     override fun onBind(intent: Intent?): IBinder {
         return if (intent?.action == "androidx.media3.session.MediaSessionService" ||
                    intent?.action == "android.media.browse.MediaBrowserService") {
-            super.onBind(intent)!!
+            val binder = super.onBind(intent)
+            binder ?: this.binder
         } else {
             binder
         }
