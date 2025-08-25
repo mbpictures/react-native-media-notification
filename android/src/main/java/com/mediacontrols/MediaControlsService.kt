@@ -15,8 +15,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
@@ -26,9 +26,9 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 
 @UnstableApi
-class MediaControlsService : MediaSessionService() {
+class MediaControlsService : MediaLibraryService() {
 
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
     private val binder = LocalBinder()
     private var mediaController: MediaController? = null
 
@@ -65,8 +65,7 @@ class MediaControlsService : MediaSessionService() {
         }
 
         // Create media session
-        mediaSession = MediaSession.Builder(this, player!!)
-            .setCallback(MediaSessionCallback())
+        mediaSession = MediaLibrarySession.Builder(this, player!!, MediaSessionCallback())
             .setId("MediaControlsSession")
             .build()
 
@@ -127,7 +126,7 @@ class MediaControlsService : MediaSessionService() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
@@ -146,14 +145,14 @@ class MediaControlsService : MediaSessionService() {
 
     fun getPlayer(): MediaControlsPlayer? = player
 
-    private inner class MediaSessionCallback : MediaSession.Callback {
+    private inner class MediaSessionCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             // Accept all connections and provide full access to player commands
-            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .addSessionCommands(CustomCommandButton.entries.map { c -> c.commandButton.sessionCommand!! })
                 .build()
 
