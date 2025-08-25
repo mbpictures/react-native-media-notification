@@ -36,6 +36,20 @@ export interface NativeEvent {
   seekPosition?: number; // Position in seconds for seek events
 }
 
+export interface NativeLibraryItem {
+  id: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  artwork?: string;
+  duration?: number;
+  playable?: boolean;
+  browsable?: boolean;
+  mediaType?: string;
+
+  items?: NativeLibraryItem[];
+}
+
 export interface Spec extends TurboModule {
   setControlEnabled(name: string, enabled: boolean): void;
   updateMetadata(metadata: NativeMediaTrackMetadata): Promise<void>;
@@ -48,6 +62,8 @@ export interface Spec extends TurboModule {
   enableBackgroundMode(enabled: boolean): void;
 
   shutdown(): void;
+
+  setMediaLibrary(library: NativeLibraryItem): void;
 
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;

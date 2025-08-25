@@ -2,6 +2,7 @@ import MediaControls, {
   ALL_MEDIA_EVENTS,
   type MediaControl,
   type MediaControlEvent,
+  type NativeLibraryItem,
 } from './NativeMediaControls';
 import type { NativeMediaTrackMetadata } from './NativeMediaControls';
 import { EventEmitter, EventSubscription } from 'fbemitter';
@@ -11,8 +12,24 @@ import {
 } from 'react-native';
 import type { ImageSourcePropType } from 'react-native/Libraries/Image/Image';
 
-interface MediaTrackMetadata extends Omit<NativeMediaTrackMetadata, 'artwork'> {
+export interface MediaTrackMetadata
+  extends Omit<NativeMediaTrackMetadata, 'artwork'> {
   artwork?: string | ImageSourcePropType;
+}
+
+export type MediaItemMediaType =
+  | 'music'
+  | 'podcast'
+  | 'radio'
+  | 'album'
+  | 'artist'
+  | 'genre'
+  | 'playlist';
+
+export interface LibraryItem
+  extends Omit<NativeLibraryItem, 'mediaType' | 'items'> {
+  items?: LibraryItem[];
+  mediaItem?: MediaItemMediaType;
 }
 
 export type MediaControlEventData = {
@@ -41,6 +58,14 @@ export async function updateMetadata(
     metadata.artwork = Image.resolveAssetSource(metadata.artwork).uri;
   }
   return MediaControls.updateMetadata(metadata as NativeMediaTrackMetadata);
+}
+
+/**
+ * Sets the media library for browsing and playback.
+ * @param library The root item of the media library hierarchy.
+ */
+export function setMediaLibrary(library: LibraryItem) {
+  return MediaControls.setMediaLibrary(library);
 }
 
 /**
@@ -97,6 +122,3 @@ export function removeAllListeners(event?: MediaControlEvent): void {
     ALL_MEDIA_EVENTS.forEach((e) => eventEmitter.removeAllListeners(e));
   }
 }
-
-// Export types
-export type { MediaTrackMetadata };
