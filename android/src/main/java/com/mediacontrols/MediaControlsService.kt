@@ -85,6 +85,13 @@ class MediaControlsService : MediaLibraryService() {
         // Create MediaController for media controls
         setupMediaController()
 
+        MediaStore.init(this)
+        MediaStore.Instance.addListener(object: MediaStore.Listener {
+            override fun onMediaItemsUpdated(parentId: String?, itemCount: Int) {
+                mediaSession?.notifyChildrenChanged(parentId ?: "root", itemCount, null)
+            }
+        })
+
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
     }
 
