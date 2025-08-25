@@ -192,5 +192,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   companion object {
     const val NAME = "MediaControls"
+
+    var Instance : MediaControlsModule? = null
   }
 }
