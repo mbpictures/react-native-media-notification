@@ -125,6 +125,23 @@ export default function App() {
   }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    MediaControls.setMediaLibrary({
+      id: 'root',
+      title: 'Media Library',
+      browsable: true,
+      playable: false,
+      items: tracks.map((track, index) => ({
+        id: `track-${index}`,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        artwork: track.artwork,
+        duration: 0,
+        playable: true,
+        mediaItem: 'music',
+      })),
+    });
+
     MediaControls.setControlEnabled('play', true);
     MediaControls.setControlEnabled('pause', true);
     MediaControls.setControlEnabled('seek', true);
