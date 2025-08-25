@@ -36,6 +36,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     }
   }
   init {
+    MediaStore.init(reactContext)
     MediaControlsService.player = MediaControlsPlayer(reactContext)
     Instance = this
   }
