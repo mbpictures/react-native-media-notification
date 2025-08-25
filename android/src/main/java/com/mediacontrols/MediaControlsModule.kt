@@ -11,6 +11,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = MediaControlsModule.NAME)
@@ -100,6 +101,10 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   override fun shutdown() {
     this.stopMediaService();
+  }
+
+  override fun setMediaLibrary(library: ReadableMap?) {
+    MediaStore.Instance.build(library)
   }
 
   @ReactMethod
