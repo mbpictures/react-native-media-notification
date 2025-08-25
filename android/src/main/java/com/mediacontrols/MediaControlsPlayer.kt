@@ -1,10 +1,15 @@
 package com.mediacontrols
 
+import android.app.ActivityManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.webkit.URLUtil
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -13,7 +18,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
-import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.HeadlessJsTaskService
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.views.imagehelper.ResourceDrawableIdHelper
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -257,6 +264,7 @@ class MediaControlsPlayer(
             add(Player.COMMAND_PREPARE)
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             add(Player.COMMAND_GET_METADATA)
+            add(Player.COMMAND_SET_MEDIA_ITEM)
         }
 
         updateState { builder ->
