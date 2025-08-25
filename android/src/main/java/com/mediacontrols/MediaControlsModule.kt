@@ -34,11 +34,9 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
       serviceBound = false
     }
   }
-
   init {
-    // Set react context for the service, but don't start it yet
-    MediaControlsService.reactContext = reactContext
-    MediaControlsService.player = MediaControlsPlayer(reactContext, this)
+    MediaControlsService.player = MediaControlsPlayer(reactContext)
+    Instance = this
   }
 
   override fun getName(): String {

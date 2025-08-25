@@ -7,12 +7,10 @@ import android.media.AudioManager.OnAudioFocusChangeListener
 import android.os.Build
 import android.os.Handler
 import androidx.media3.common.util.UnstableApi
-import com.facebook.react.bridge.ReactApplicationContext
 
 @UnstableApi
 class AudioFocusListener(
-    context: ReactApplicationContext,
-    private val module: MediaControlsModule,
+    context: Context,
     private val player: MediaControlsPlayer
 ) : OnAudioFocusChangeListener {
 
@@ -29,23 +27,23 @@ class AudioFocusListener(
         if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
             abandonAudioFocus()
             mPlayOnAudioFocus = false
-            module.sendEvent(Controls.STOP, null)
+            player.sendEvent(Controls.STOP, null)
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             Handler(player.applicationLooper).post {
                 if (player.isPlaying) {
                     mPlayOnAudioFocus = true
-                    module.sendEvent(Controls.PAUSE, null)
+                    player.sendEvent(Controls.PAUSE, null)
                 }
             }
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
-            module.sendEvent(Controls.DUCK, null)
+            player.sendEvent(Controls.DUCK, null)
             ducked = true
         } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
             if (mPlayOnAudioFocus) {
-                module.sendEvent(Controls.PLAY, null)
+                player.sendEvent(Controls.PLAY, null)
             }
             if (ducked) {
-                module.sendEvent(Controls.UN_DUCK, null)
+                player.sendEvent(Controls.UN_DUCK, null)
             }
             mPlayOnAudioFocus = false
             ducked = false

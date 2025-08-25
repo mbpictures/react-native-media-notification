@@ -34,7 +34,6 @@ class MediaControlsService : MediaSessionService() {
 
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
-        var reactContext: ReactApplicationContext? = null
         var player: MediaControlsPlayer? = null
     }
 

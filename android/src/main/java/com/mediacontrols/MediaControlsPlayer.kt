@@ -26,8 +26,7 @@ import java.io.ByteArrayOutputStream
 
 @UnstableApi
 class MediaControlsPlayer(
-    private val reactContext: ReactApplicationContext,
-    private val module: MediaControlsModule,
+    private val context: Context
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -39,7 +38,7 @@ class MediaControlsPlayer(
     // Audio interruption
     private var audioInterruptionEnabled = false
 
-    private var audioFocusListener = AudioFocusListener(reactContext, module, this)
+    private var audioFocusListener = AudioFocusListener(context, this)
 
     // Control states
     private val enabledControls = mutableMapOf<Controls, Boolean>()
@@ -79,7 +78,7 @@ class MediaControlsPlayer(
                 .setPlaybackState(Player.STATE_IDLE)
         }
 
-        module.sendEvent(Controls.STOP, null)
+        sendEvent(Controls.STOP, null)
         return Futures.immediateFuture(null)
     }
 
@@ -96,18 +95,18 @@ class MediaControlsPlayer(
         // Handle different seek commands
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-                module.sendEvent(Controls.NEXT, null)
+                sendEvent(Controls.NEXT, null)
             }
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-                module.sendEvent(Controls.PREVIOUS, null)
+                sendEvent(Controls.PREVIOUS, null)
             }
             Player.COMMAND_SEEK_FORWARD -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent(Controls.SEEK_FORWARD, positionSeconds)
+                sendEvent(Controls.SEEK_FORWARD, Arguments.createMap().apply { putInt("position", positionSeconds) })
             }
             Player.COMMAND_SEEK_BACK -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent(Controls.SEEK_BACKWARD, positionSeconds)
+                sendEvent(Controls.SEEK_BACKWARD, Arguments.createMap().apply { putInt("position", positionSeconds) })
             }
             else -> {
                 emitSeekEvent(positionMs)
@@ -137,11 +136,11 @@ class MediaControlsPlayer(
     }
 
     fun emitShuffleClicked() {
-        module.sendEvent(Controls.SHUFFLE, null)
+        sendEvent(Controls.SHUFFLE, null)
     }
 
     fun emitRepeatClicked() {
-        module.sendEvent(Controls.REPEAT_MODE, null)
+        sendEvent(Controls.REPEAT_MODE, null)
     }
 
     // Custom methods for React Native integration
@@ -226,7 +225,7 @@ class MediaControlsPlayer(
             this.setArtworkUri(artwork.toUri())
         } else {
             val helper = ResourceDrawableIdHelper.getInstance()
-            val image = helper.getResourceDrawable(reactContext, artwork)
+            val image = helper.getResourceDrawable(context, artwork)
 
             val bitmap = if (image is BitmapDrawable) {
                 image.bitmap
@@ -327,16 +326,42 @@ class MediaControlsPlayer(
 
     private fun emitPlaybackStateChanged(isPlaying: Boolean) {
         val command = if (isPlaying) Controls.PLAY else Controls.PAUSE
-        module.sendEvent(command, null)
+        sendEvent(command, null)
     }
 
     private fun emitSeekEvent(positionMs: Long) {
         val positionSeconds = (positionMs / 1000).toInt()
-        module.sendEvent(Controls.SEEK, positionSeconds)
+        sendEvent(Controls.SEEK, Arguments.createMap().apply { putInt("position", positionSeconds) })
     }
 
     fun cleanup() {
         scope.cancel()
+    }
+
+    fun sendEvent(command: Controls, data: WritableMap?) {
+        if (isAppInForeground() && MediaControlsModule.Instance != null) {
+            MediaControlsModule.Instance?.sendEvent(command, data?.getInt("position"))
+            return
+        }
+
+        try {
+            val backgroundIntent = Intent(context, MediaControlsHeadlessTask::class.java)
+            backgroundIntent.putExtra("command", command.code)
+            backgroundIntent.putExtra("data", Arguments.toBundle(data))
+            val name: ComponentName? = context.startService(backgroundIntent)
+            if (name != null) {
+                HeadlessJsTaskService.acquireWakeLockNow(context)
+            }
+        } catch (ex: IllegalStateException) {
+            // By default, data only messages are "default" priority and cannot trigger Headless tasks
+            Log.e("MediaControls", "Error while sending command to headless task", ex)
+        }
+    }
+
+    private fun isAppInForeground(): Boolean {
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val runningAppProcesses = activityManager.runningAppProcesses ?: return false
+        return runningAppProcesses.any { it.processName == context.packageName && it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND }
     }
 }
 
