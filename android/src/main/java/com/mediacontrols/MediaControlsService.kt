@@ -239,6 +239,8 @@ class MediaControlsService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            EventEmitter.sendEvent(this@MediaControlsService, Controls.SET_MEDIA_ITEMS, Arguments.createMap().apply { putArray("mediaItems",
+                Arguments.createArray().apply { mediaItems.forEach { item -> pushString(item.mediaId) } }) })
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs)
             )
