@@ -1,6 +1,7 @@
 package com.mediacontrols
 
 import android.content.Intent
+import android.os.Bundle
 import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
@@ -11,8 +12,10 @@ class MediaControlsHeadlessTask : HeadlessJsTaskService() {
         if (intent == null || extras == null) return null
 
         val data = Arguments.createMap()
-        data.putString("command", intent.parcelable("message"))
-        data.putMap("data", Arguments.fromBundle(intent.parcelable("data")))
+        data.putString("command", intent.parcelable("command"))
+        intent.parcelable<Bundle>("data")?.let {
+            data.putMap("data", Arguments.fromBundle(it))
+        }
 
         return HeadlessJsTaskConfig(
             TASK_KEY,
