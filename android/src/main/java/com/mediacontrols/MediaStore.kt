@@ -165,7 +165,6 @@ class MediaStore {
         return MediaItem.Builder()
             .setMediaId(element.id)
             .setTag(element)
-            .setUri(element.artUri ?: "")
             .setMediaMetadata(element)
             .build()
     }
