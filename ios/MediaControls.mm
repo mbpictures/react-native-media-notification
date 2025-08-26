@@ -297,9 +297,12 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
 - (void)emitEvent:(NSString*) name position:(nullable NSNumber*) position {
   NSMutableDictionary *params = [NSMutableDictionary dictionary];
   params[@"command"] = name;
+
+  NSMutableDictionary *data = [NSMutableDictionary dictionary];
   if (position) {
-    params[@"seekPosition"] = position;
+    data[@"seekPosition"] = position;
   }
+  params[@"data"] = data;
   [self emitOnEvent:params];
 }
 
