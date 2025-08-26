@@ -220,7 +220,7 @@ data class MediaElement(
                 artist = if (data.hasKey("artist")) data.getString("artist") else null,
                 album = if (data.hasKey("album")) data.getString("album") else null,
                 duration = if (data.hasKey("duration")) data.getDouble("duration").toLong() else null,
-                artUri = if (data.hasKey("artUri")) data.getString("artUri") else null,
+                artUri = if (data.hasKey("artwork")) data.getString("artwork") else null,
                 playable = if (data.hasKey("playable")) data.getBoolean("playable") else null,
                 browsable = if (data.hasKey("browsable")) data.getBoolean("browsable") else null,
                 mediaType = parseType(data.getString("mediaType")),
