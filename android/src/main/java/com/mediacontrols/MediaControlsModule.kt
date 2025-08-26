@@ -12,6 +12,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = MediaControlsModule.NAME)
@@ -155,12 +156,10 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  fun sendEvent(eventName: Controls, position: Int?) {
+  fun sendEvent(eventName: Controls, data: WritableMap?) {
     val eventData = Arguments.createMap().apply {
         putString("command", eventName.code)
-        position?.let {
-          putInt("seekPosition", it)
-        }
+        putMap("data", data)
     }
     emitOnEvent(eventData)
   }

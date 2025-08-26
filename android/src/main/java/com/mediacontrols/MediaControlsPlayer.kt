@@ -1,15 +1,11 @@
 package com.mediacontrols
 
-import android.app.ActivityManager
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.webkit.URLUtil
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -18,7 +14,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
-import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.views.imagehelper.ResourceDrawableIdHelper
@@ -109,11 +104,11 @@ class MediaControlsPlayer(
             }
             Player.COMMAND_SEEK_FORWARD -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                sendEvent(Controls.SEEK_FORWARD, Arguments.createMap().apply { putInt("position", positionSeconds) })
+                sendEvent(Controls.SEEK_FORWARD, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
             }
             Player.COMMAND_SEEK_BACK -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                sendEvent(Controls.SEEK_BACKWARD, Arguments.createMap().apply { putInt("position", positionSeconds) })
+                sendEvent(Controls.SEEK_BACKWARD, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
             }
             else -> {
                 emitSeekEvent(positionMs)
@@ -339,7 +334,7 @@ class MediaControlsPlayer(
 
     private fun emitSeekEvent(positionMs: Long) {
         val positionSeconds = (positionMs / 1000).toInt()
-        sendEvent(Controls.SEEK, Arguments.createMap().apply { putInt("position", positionSeconds) })
+        sendEvent(Controls.SEEK, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
     }
 
     fun cleanup() {
@@ -347,29 +342,7 @@ class MediaControlsPlayer(
     }
 
     fun sendEvent(command: Controls, data: WritableMap?) {
-        if (isAppInForeground() && MediaControlsModule.Instance != null) {
-            MediaControlsModule.Instance?.sendEvent(command, data?.getInt("position"))
-            return
-        }
-
-        try {
-            val backgroundIntent = Intent(context, MediaControlsHeadlessTask::class.java)
-            backgroundIntent.putExtra("command", command.code)
-            backgroundIntent.putExtra("data", Arguments.toBundle(data))
-            val name: ComponentName? = context.startService(backgroundIntent)
-            if (name != null) {
-                HeadlessJsTaskService.acquireWakeLockNow(context)
-            }
-        } catch (ex: IllegalStateException) {
-            // By default, data only messages are "default" priority and cannot trigger Headless tasks
-            Log.e("MediaControls", "Error while sending command to headless task", ex)
-        }
-    }
-
-    private fun isAppInForeground(): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val runningAppProcesses = activityManager.runningAppProcesses ?: return false
-        return runningAppProcesses.any { it.processName == context.packageName && it.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND }
+        EventEmitter.sendEvent(context, command, data)
     }
 }
 
