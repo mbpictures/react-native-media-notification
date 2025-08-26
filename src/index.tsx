@@ -126,7 +126,7 @@ export function removeAllListeners(event?: MediaControlEvent): void {
 }
 
 export interface BackgroundEvent {
-  command: MediaControl;
+  command: MediaControlEvent;
   data: any;
 }
 
