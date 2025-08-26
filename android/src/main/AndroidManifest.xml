@@ -22,6 +22,8 @@
             </intent-filter>
         </service>
 
+        <service android:name=".MediaControlsHeadlessTask" />
+
         <meta-data
             android:name="com.samsung.android.support.ongoing_activity"
             android:value="true" />
