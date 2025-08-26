@@ -7,6 +7,7 @@ import MediaControls, {
 import type { NativeMediaTrackMetadata } from './NativeMediaControls';
 import { EventEmitter, EventSubscription } from 'fbemitter';
 import {
+  AppRegistry,
   type EventSubscription as NativeEventSubscription,
   Image,
 } from 'react-native';
@@ -33,7 +34,8 @@ export interface LibraryItem
 }
 
 export type MediaControlEventData = {
-  position?: number; // für seek events
+  seekPosition?: number;
+  mediaItems?: string[];
 };
 
 const eventEmitter = new EventEmitter();
@@ -43,8 +45,8 @@ const setUpNativeEventListener = () => {
   if (unsubscribe) return;
 
   unsubscribe = MediaControls.onEvent((event) => {
-    const { command, seekPosition } = event;
-    eventEmitter.emit(command, { position: seekPosition });
+    const { command, data } = event;
+    eventEmitter.emit(command, data);
   });
 };
 
@@ -121,4 +123,24 @@ export function removeAllListeners(event?: MediaControlEvent): void {
   } else {
     ALL_MEDIA_EVENTS.forEach((e) => eventEmitter.removeAllListeners(e));
   }
+}
+
+export interface BackgroundEvent {
+  command: MediaControl;
+  data: any;
+}
+
+type BackgroundMessageHandler = (event: BackgroundEvent) => Promise<void>;
+
+/**
+ * Sets the background message handler to process media control events when the app is in the background or terminated.
+ * @param handler The function to handle background media control events.
+ * @param appRegistry Optional AppRegistry instance to use for headless task registration. If not provided, uses the default AppRegistry.
+ */
+export function setBackgroundMessageHandler(
+  handler: BackgroundMessageHandler,
+  appRegistry?: typeof AppRegistry
+) {
+  const registry = appRegistry || AppRegistry;
+  registry.registerHeadlessTask('MediaControlsHeadlessTask', () => handler);
 }

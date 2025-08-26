@@ -1,6 +1,9 @@
 import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
-import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
+import type {
+  EventEmitter,
+  UnsafeObject,
+} from 'react-native/Libraries/Types/CodegenTypes';
 
 // Event types
 export const ALL_MEDIA_EVENTS = [
@@ -17,7 +20,11 @@ export const ALL_MEDIA_EVENTS = [
 ] as const;
 export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
 
-export type MediaControlEvent = MediaControl | 'duck' | 'unDuck';
+export type MediaControlEvent =
+  | MediaControl
+  | 'duck'
+  | 'unDuck'
+  | 'setMediaItems';
 
 export interface NativeMediaTrackMetadata {
   title?: string;
@@ -33,7 +40,7 @@ export interface NativeMediaTrackMetadata {
 
 export interface NativeEvent {
   command: string;
-  seekPosition?: number; // Position in seconds for seek events
+  data: UnsafeObject; // Position in seconds for seek events
 }
 
 export interface NativeLibraryItem {
