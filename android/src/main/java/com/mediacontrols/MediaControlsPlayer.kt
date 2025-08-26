@@ -123,17 +123,15 @@ class MediaControlsPlayer(
         startIndex: Int,
         startPositionMs: Long
     ): ListenableFuture<*> {
-        val mediaItemDataList = mediaItems.map { mediaItem ->
-            MediaItemData.Builder(mediaItem.mediaId)
-                .setMediaItem(mediaItem)
-                .build()
-        }
-
-        updateState { builder ->
-            builder.setPlaylist(mediaItemDataList)
-                .setCurrentMediaItemIndex(startIndex)
-                .setContentPositionMs(startPositionMs)
-        }
+        sendEvent(
+            Controls.SET_MEDIA_ITEMS,
+            Arguments.createMap().apply {
+                putArray(
+                    "mediaItems",
+                    Arguments.createArray().apply { mediaItems.forEach { item -> pushString(item.mediaId) } }
+                )
+            }
+        )
         return Futures.immediateFuture(null)
     }
 
