@@ -103,6 +103,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   override fun shutdown() {
     this.stopMediaService();
+    Instance = null
   }
 
   override fun setMediaLibrary(library: ReadableMap?) {
