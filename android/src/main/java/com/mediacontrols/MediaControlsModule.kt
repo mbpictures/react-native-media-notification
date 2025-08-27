@@ -1,5 +1,6 @@
 package com.mediacontrols
 
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -7,11 +8,10 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactMethod
-import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
 
@@ -22,7 +22,6 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   private var mediaService: MediaControlsService? = null
   private var serviceBound = false
-  private var serviceInitialized = false // Flag to track if service has been initialized
 
   private val serviceConnection = object : ServiceConnection {
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -153,10 +152,19 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   }
 
   private fun ensureServiceStarted() {
-    if (!serviceInitialized) {
+    if (!isServiceRunning(MediaControlsService::class.java)) {
       startMediaService()
-      serviceInitialized = true
     }
+  }
+
+  private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+    val activityManager = reactApplicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    for (service in activityManager.getRunningServices(Int.Companion.MAX_VALUE)) {
+      if (serviceClass.name == service.service.className) {
+        return true
+      }
+    }
+    return false
   }
 
   fun sendEvent(eventName: Controls, data: WritableMap?) {
@@ -183,7 +191,6 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
     val intent = Intent(reactApplicationContext, MediaControlsService::class.java)
     reactApplicationContext.stopService(intent)
-    serviceInitialized = false
     mediaService = null
   }
 
