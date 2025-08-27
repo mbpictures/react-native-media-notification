@@ -68,9 +68,6 @@ class MediaControlsPlayer(
     }
 
     override fun handlePrepare(): ListenableFuture<*> {
-        updateState { builder ->
-            builder.setPlaybackState(Player.STATE_READY)
-        }
         return Futures.immediateFuture(null)
     }
 
