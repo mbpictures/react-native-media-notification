@@ -38,7 +38,9 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   }
   init {
     MediaStore.init(reactContext)
-    MediaControlsService.player = MediaControlsPlayer(reactContext)
+    if (MediaControlsService.player == null) {
+      MediaControlsService.player = MediaControlsPlayer(reactContext)
+    }
     Instance = this
   }
 
