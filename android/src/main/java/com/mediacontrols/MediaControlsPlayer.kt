@@ -32,7 +32,7 @@ class MediaControlsPlayer(
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var currentState = State.Builder().build()
+    private var currentState = State.Builder().setAvailableCommands(getCommands()).build()
 
     // Track metadata
     private var currentMetadata: MediaTrackMetadata? = null
@@ -241,28 +241,25 @@ class MediaControlsPlayer(
 
     fun setControlEnabled(controlName: Controls, enabled: Boolean) {
         enabledControls[controlName] = enabled
+    }
 
-        // Update available commands based on enabled controls
+    fun getCommands(): Player.Commands {
         val availableCommands = mutableSetOf<Int>().apply {
-            if (enabledControls[Controls.PLAY] == true || enabledControls[Controls.PAUSE] == true) add(Player.COMMAND_PLAY_PAUSE)
-            if (enabledControls[Controls.STOP] == true) add(Player.COMMAND_STOP)
-            if (enabledControls[Controls.NEXT] == true) add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-            if (enabledControls[Controls.PREVIOUS] == true) add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-            if (enabledControls[Controls.SEEK] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            if (enabledControls[Controls.SEEK_FORWARD] == true) add(Player.COMMAND_SEEK_FORWARD)
-            if (enabledControls[Controls.SEEK_BACKWARD] == true) add(Player.COMMAND_SEEK_BACK)
-            if (enabledControls[Controls.SHUFFLE] == true) add(Player.COMMAND_SET_SHUFFLE_MODE)
-            if (enabledControls[Controls.REPEAT_MODE] == true) add(Player.COMMAND_SET_REPEAT_MODE)
-
+            add(Player.COMMAND_PLAY_PAUSE)
+            add(Player.COMMAND_STOP)
+            add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_FORWARD)
+            add(Player.COMMAND_SEEK_BACK)
+            add(Player.COMMAND_SET_SHUFFLE_MODE)
+            add(Player.COMMAND_SET_REPEAT_MODE)
             add(Player.COMMAND_PREPARE)
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             add(Player.COMMAND_GET_METADATA)
             add(Player.COMMAND_SET_MEDIA_ITEM)
         }
-
-        updateState { builder ->
-            builder.setAvailableCommands(Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build())
-        }
+        return Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build()
     }
 
     fun getAvailableCustomCommands(): Set<CommandButton> {
