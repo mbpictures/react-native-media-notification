@@ -144,3 +144,13 @@ export function setBackgroundMessageHandler(
   const registry = appRegistry || AppRegistry;
   registry.registerHeadlessTask('MediaControlsHeadlessTask', () => handler);
 }
+
+/**
+ * Sets up a foreground event handler to process media control events when the app is in the foreground.
+ * @param handler The function to handle media control events.
+ */
+export function foregroundEventHandler(handler: BackgroundMessageHandler) {
+  return MediaControls.onEvent((event) =>
+    handler({ command: event.command as MediaControlEvent, data: event.data })
+  );
+}
