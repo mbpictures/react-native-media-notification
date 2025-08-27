@@ -1,51 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, Button, Text, StyleSheet, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Button, Text, StyleSheet } from 'react-native';
 import * as MediaControls from 'react-native-media-notification';
-import Sound from 'react-native-sound';
-
-const tracks = [
-  {
-    title: 'Relaxing Nature Sounds',
-    artist: 'Nature Sounds',
-    album: 'Peaceful Moments',
-    artwork: 'https://picsum.photos/seed/notification1/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  },
-  {
-    title: 'Upbeat Song',
-    artist: 'Happy Band',
-    album: 'Feel Good Album',
-    artwork: 'https://picsum.photos/seed/notification2/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  },
-  {
-    title: 'Classical Piece',
-    artist: 'Orchestra',
-    album: 'Symphonies',
-    artwork: 'https://picsum.photos/seed/notification3/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  },
-];
+import * as MusicHandler from './MusicHandler';
 
 export default function App() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(MusicHandler.playing);
   const [currentPosition, setCurrentPosition] = useState(0);
-  const [currentTrack, setCurrentTrack] = useState(0);
-  const sound = useRef<Sound | null>(null);
-  const [duration, setDuration] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState(
+    MusicHandler.currentTrackIndex
+  );
+  const [duration, setDuration] = useState(MusicHandler.duration);
 
   const handleSetCurrentTrack = (index: number) => {
-    const track = tracks[index];
+    const track = MusicHandler.tracks[index];
     if (!track) return;
-    MediaControls.updateMetadata({
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      duration: 0,
-      position: 0,
-      isPlaying: isPlaying,
-      artwork: track.artwork,
-    }).catch(console.error);
     setCurrentTrack(index);
     setCurrentPosition(0);
     setIsPlaying(false);
@@ -55,13 +23,13 @@ export default function App() {
     const playListener = MediaControls.addEventListener('play', () => {
       console.log('Play event received');
       setIsPlaying(true);
-      sound.current?.play(handleFinished);
+      MusicHandler.setPlaying(true, handleFinished);
     });
 
     const pauseListener = MediaControls.addEventListener('pause', () => {
       console.log('Pause event received');
       setIsPlaying(false);
-      sound.current?.pause();
+      MusicHandler.setPlaying(false);
     });
 
     const stopListener = MediaControls.addEventListener('stop', () => {
@@ -83,9 +51,9 @@ export default function App() {
     );
 
     const seekListener = MediaControls.addEventListener('seek', (data) => {
-      console.log('Seek event received, position:', data?.position);
-      if (data?.position) {
-        sound.current?.setCurrentTime(data.position);
+      console.log('Seek event received, position:', data?.seekPosition);
+      if (data?.seekPosition) {
+        MusicHandler.sound?.setCurrentTime(data.seekPosition);
       }
     });
 
@@ -93,9 +61,9 @@ export default function App() {
       'seekForward',
       () => {
         console.log('Seek forward event received');
-        sound.current?.getCurrentTime((position) => {
-          sound.current?.setCurrentTime(
-            Math.min(position + 15, sound.current?.getDuration() ?? 0)
+        MusicHandler.sound?.getCurrentTime((position) => {
+          MusicHandler.sound?.setCurrentTime(
+            Math.min(position + 15, MusicHandler.sound?.getDuration() ?? 0)
           );
         });
       }
@@ -105,9 +73,27 @@ export default function App() {
       'seekBackward',
       () => {
         console.log('Seek backward event received');
-        sound.current?.getCurrentTime((position) => {
-          sound.current?.setCurrentTime(Math.min(position - 15, 0));
+        MusicHandler.sound?.getCurrentTime((position) => {
+          MusicHandler.sound?.setCurrentTime(Math.min(position - 15, 0));
         });
+      }
+    );
+
+    const setMediaItemsListener = MediaControls.addEventListener(
+      'setMediaItems',
+      (data) => {
+        console.log('Set media items event received', data?.mediaItems);
+        if (data?.mediaItems) {
+          const index = MusicHandler.resolveTrackIndex(
+            data.mediaItems[0] ?? ''
+          );
+          handleSetCurrentTrack(index);
+          MusicHandler.loadTrack(index, (newDuration) => {
+            setDuration(newDuration);
+            handleSetCurrentTrack(index);
+            togglePlayPause(true).catch(console.warn);
+          });
+        }
       }
     );
 
@@ -121,6 +107,7 @@ export default function App() {
       seekListener.remove();
       seekForwardListener.remove();
       seekBackwardListener.remove();
+      setMediaItemsListener.remove();
     };
   }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -130,7 +117,7 @@ export default function App() {
       title: 'Media Library',
       browsable: true,
       playable: false,
-      items: tracks.map((track, index) => ({
+      items: MusicHandler.tracks.map((track, index) => ({
         id: `track-${index}`,
         title: track.title,
         artist: track.artist,
@@ -151,32 +138,14 @@ export default function App() {
     MediaControls.setControlEnabled('seekBackward', true);
     MediaControls.setControlEnabled('stop', true);
 
-    // enable audio interruptions
-    MediaControls.enableAudioInterruption(true).catch(console.error);
-    MediaControls.enableBackgroundMode(true);
-
-    Sound.setCategory('Playback', true);
-
     return () => MediaControls.shutdown();
   }, []);
 
   useEffect(() => {
-    const track = tracks[currentTrack];
-    if (!track) return;
-    if (sound.current) {
-      sound.current.release();
-    }
-
-    sound.current = new Sound(track.url, undefined, (error, props) => {
-      if (error) {
-        Alert.alert('Error while sounding sound', error);
-        return;
-      }
-      setDuration(props.duration ?? 0);
-    });
+    MusicHandler.loadTrack(currentTrack, setDuration);
 
     const interval = setInterval(() => {
-      sound.current?.getCurrentTime((position) => {
+      MusicHandler.sound?.getCurrentTime((position) => {
         setCurrentPosition(position);
       });
     }, 1000);
@@ -184,32 +153,14 @@ export default function App() {
   }, [currentTrack]);
 
   const handleFinished = () => {
-    const nextTrackIndex = (currentTrack + 1) % tracks.length;
+    const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
     setCurrentTrack(nextTrackIndex);
   };
 
-  const togglePlayPause = async () => {
-    const track = tracks[currentTrack];
-    if (track) {
-      sound.current?.getCurrentTime((position) => {
-        MediaControls.updateMetadata({
-          title: track.title,
-          artist: track.artist,
-          album: track.album,
-          duration: sound.current?.getDuration() ?? 0,
-          position,
-          isPlaying: !isPlaying,
-          artwork: track.artwork,
-        }).catch(console.error);
-      });
-    }
-    if (isPlaying) {
-      setIsPlaying(false);
-      sound.current?.pause();
-    } else {
-      setIsPlaying(true);
-      sound.current?.play(handleFinished);
-    }
+  const togglePlayPause = async (play?: boolean) => {
+    play = play ?? !isPlaying;
+    MusicHandler.setPlaying(play, handleFinished);
+    setIsPlaying(play);
   };
 
   const stopPlayback = async () => {
@@ -217,20 +168,20 @@ export default function App() {
       setIsPlaying(false);
       setCurrentPosition(0);
       await MediaControls.stopMediaNotification();
-      sound.current?.stop();
+      MusicHandler.sound?.stop();
     } catch (error) {
       console.error('Error while stopping: ', error);
     }
   };
 
   const nextTrack = () => {
-    const nextTrackIndex = (currentTrack + 1) % tracks.length;
+    const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
     handleSetCurrentTrack(nextTrackIndex);
   };
 
   const prevTrack = () => {
     const prevTrackIndex =
-      currentTrack === 0 ? tracks.length - 1 : currentTrack - 1;
+      currentTrack === 0 ? MusicHandler.tracks.length - 1 : currentTrack - 1;
     handleSetCurrentTrack(prevTrackIndex);
   };
 
@@ -240,7 +191,7 @@ export default function App() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const track = tracks[currentTrack];
+  const track = MusicHandler.tracks[currentTrack];
 
   return (
     <View style={styles.container}>
@@ -265,7 +216,7 @@ export default function App() {
         <Button title="⏮️ Prev" onPress={prevTrack} />
         <Button
           title={isPlaying ? '⏸️ Pause' : '▶️ Play'}
-          onPress={togglePlayPause}
+          onPress={() => togglePlayPause()}
         />
         <Button title="⏭️ Next" onPress={nextTrack} />
       </View>
