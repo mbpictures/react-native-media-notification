@@ -21,7 +21,7 @@ class MediaControlsHeadlessTask : HeadlessJsTaskService() {
             TASK_KEY,
             data,
             TIMEOUT_DEFAULT,
-            false
+            true // fix possible race condition
         )
     }
 
