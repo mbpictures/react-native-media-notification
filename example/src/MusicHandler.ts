@@ -98,6 +98,7 @@ export const setPlaying = (newPlaying: boolean, finished?: () => unknown) => {
   if (!track) return;
   sound?.getCurrentTime((position) => {
     MediaControls.updateMetadata({
+      id: `track-${currentTrackIndex}`,
       title: track.title,
       artist: track.artist,
       album: track.album,
