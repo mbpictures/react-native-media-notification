@@ -20,6 +20,7 @@ class MediaStore {
         var Instance: MediaStore = MediaStore()
         private const val PREFS_NAME = "MediaStorePrefs"
         private const val KEY_HIERARCHY = "media_items_hierarchy"
+        private const val KEY_CURRENT_ID = "current_media_id"
         private var sharedPrefs: SharedPreferences? = null
         fun init(context: Context) {
             if (sharedPrefs != null) return
@@ -49,6 +50,11 @@ class MediaStore {
         val rootId = mediaItemsHierarchy?.id ?: "root"
 
         onMediaItemsUpdated(rootId, itemCount(rootId))
+    }
+
+    fun storeCurrentMediaId(id: String?) {
+        if (sharedPrefs == null) return
+        sharedPrefs!!.edit { putString(KEY_CURRENT_ID, id) }
     }
 
     fun itemCount(parentId: String): Int {

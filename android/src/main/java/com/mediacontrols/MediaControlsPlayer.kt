@@ -163,8 +163,9 @@ class MediaControlsPlayer(
             }
             .build()
 
-        // Create unique media ID for Android Auto
-        val mediaId = "${metadata.title}_${metadata.artist}".replace(" ", "_")
+        val mediaId = metadata.id ?: "${metadata.title}_${metadata.artist}".replace(" ", "_")
+
+        MediaStore.Instance.storeCurrentMediaId(mediaId)
 
         val mediaItem = MediaItem.Builder()
             .setMediaId(mediaId)
@@ -340,6 +341,7 @@ class MediaControlsPlayer(
 
 // Data class for metadata
 data class MediaTrackMetadata(
+    val id: String? = null,
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,
@@ -352,6 +354,7 @@ data class MediaTrackMetadata(
 ) {
 
     fun merge(other: MediaTrackMetadata): MediaTrackMetadata = MediaTrackMetadata(
+        id = other.id ?: this.id,
         title = other.title ?: this.title,
         artist = other.artist ?: this.artist,
         album = other.album ?: this.album,
