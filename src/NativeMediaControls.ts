@@ -27,6 +27,7 @@ export type MediaControlEvent =
   | 'setMediaItems';
 
 export interface NativeMediaTrackMetadata {
+  id?: string;
   title?: string;
   artist?: string;
   album?: string;
