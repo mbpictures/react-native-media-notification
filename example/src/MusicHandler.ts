@@ -60,7 +60,7 @@ export const loadTrack = (
 ) => {
   init();
 
-  if (index === currentTrackIndex) {
+  if (index === currentTrackIndex && sound !== null) {
     return;
   }
 
