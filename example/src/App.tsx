@@ -11,106 +11,6 @@ export default function App() {
   );
   const [duration, setDuration] = useState(MusicHandler.duration);
 
-  const handleSetCurrentTrack = (index: number) => {
-    const track = MusicHandler.tracks[index];
-    if (!track) return;
-    setCurrentTrack(index);
-    setCurrentPosition(0);
-    setIsPlaying(false);
-  };
-  useEffect(() => {
-    // Event Listeners Setup
-    const playListener = MediaControls.addEventListener('play', () => {
-      console.log('Play event received');
-      setIsPlaying(true);
-      MusicHandler.setPlaying(true, handleFinished);
-    });
-
-    const pauseListener = MediaControls.addEventListener('pause', () => {
-      console.log('Pause event received');
-      setIsPlaying(false);
-      MusicHandler.setPlaying(false);
-    });
-
-    const stopListener = MediaControls.addEventListener('stop', () => {
-      console.log('Stop event received');
-      stopPlayback().catch(console.error);
-    });
-
-    const nextListener = MediaControls.addEventListener('skipToNext', () => {
-      console.log('Skip to next event received');
-      nextTrack();
-    });
-
-    const prevListener = MediaControls.addEventListener(
-      'skipToPrevious',
-      () => {
-        console.log('Skip to previous event received');
-        prevTrack();
-      }
-    );
-
-    const seekListener = MediaControls.addEventListener('seek', (data) => {
-      console.log('Seek event received, position:', data?.seekPosition);
-      if (data?.seekPosition) {
-        MusicHandler.sound?.setCurrentTime(data.seekPosition);
-      }
-    });
-
-    const seekForwardListener = MediaControls.addEventListener(
-      'seekForward',
-      () => {
-        console.log('Seek forward event received');
-        MusicHandler.sound?.getCurrentTime((position) => {
-          MusicHandler.sound?.setCurrentTime(
-            Math.min(position + 15, MusicHandler.sound?.getDuration() ?? 0)
-          );
-        });
-      }
-    );
-
-    const seekBackwardListener = MediaControls.addEventListener(
-      'seekBackward',
-      () => {
-        console.log('Seek backward event received');
-        MusicHandler.sound?.getCurrentTime((position) => {
-          MusicHandler.sound?.setCurrentTime(Math.min(position - 15, 0));
-        });
-      }
-    );
-
-    const setMediaItemsListener = MediaControls.addEventListener(
-      'setMediaItems',
-      (data) => {
-        console.log('Set media items event received', data?.mediaItems);
-        if (data?.mediaItems) {
-          const index = MusicHandler.resolveTrackIndex(
-            data.mediaItems[0] ?? ''
-          );
-          handleSetCurrentTrack(index);
-          MusicHandler.loadTrack(index, (newDuration) => {
-            setDuration(newDuration);
-            handleSetCurrentTrack(index);
-            togglePlayPause(true).catch(console.warn);
-          });
-        }
-      }
-    );
-
-    // Cleanup
-    return () => {
-      playListener.remove();
-      pauseListener.remove();
-      stopListener.remove();
-      nextListener.remove();
-      prevListener.remove();
-      seekListener.remove();
-      seekForwardListener.remove();
-      seekBackwardListener.remove();
-      setMediaItemsListener.remove();
-    };
-  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     MediaControls.setMediaLibrary({
       id: 'root',
@@ -128,17 +28,25 @@ export default function App() {
         mediaItem: 'music',
       })),
     });
+    const playingSub = MusicHandler.emitter.addListener(
+      'playing',
+      setIsPlaying
+    );
+    const durationSub = MusicHandler.emitter.addListener(
+      'duration',
+      setDuration
+    );
+    const trackChangedSub = MusicHandler.emitter.addListener(
+      'trackChanged',
+      setCurrentTrack
+    );
 
-    MediaControls.setControlEnabled('play', true);
-    MediaControls.setControlEnabled('pause', true);
-    MediaControls.setControlEnabled('seek', true);
-    MediaControls.setControlEnabled('skipToPrevious', true);
-    MediaControls.setControlEnabled('skipToNext', true);
-    MediaControls.setControlEnabled('seekForward', true);
-    MediaControls.setControlEnabled('seekBackward', true);
-    MediaControls.setControlEnabled('stop', true);
-
-    return () => MediaControls.shutdown();
+    return () => {
+      MediaControls.shutdown();
+      playingSub.remove();
+      durationSub.remove();
+      trackChangedSub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -154,13 +62,11 @@ export default function App() {
 
   const handleFinished = () => {
     const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
-    setCurrentTrack(nextTrackIndex);
+    MusicHandler.loadTrack(nextTrackIndex);
   };
 
-  const togglePlayPause = async (play?: boolean) => {
-    play = play ?? !isPlaying;
-    MusicHandler.setPlaying(play, handleFinished);
-    setIsPlaying(play);
+  const togglePlayPause = async () => {
+    MusicHandler.setPlaying(!isPlaying, handleFinished);
   };
 
   const stopPlayback = async () => {
@@ -176,13 +82,13 @@ export default function App() {
 
   const nextTrack = () => {
     const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
-    handleSetCurrentTrack(nextTrackIndex);
+    MusicHandler.loadTrack(nextTrackIndex);
   };
 
   const prevTrack = () => {
     const prevTrackIndex =
       currentTrack === 0 ? MusicHandler.tracks.length - 1 : currentTrack - 1;
-    handleSetCurrentTrack(prevTrackIndex);
+    MusicHandler.loadTrack(prevTrackIndex);
   };
 
   const formatTime = (s: number) => {

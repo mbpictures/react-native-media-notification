@@ -1,6 +1,7 @@
 import { type BackgroundEvent } from 'react-native-media-notification';
 import Sound from 'react-native-sound';
 import * as MediaControls from 'react-native-media-notification';
+import { EventEmitter } from 'fbemitter';
 
 export const tracks = [
   {
@@ -32,12 +33,22 @@ export let playing = false;
 export let currentTrackIndex = 0;
 let requestPlay = false;
 let initialized = false;
+export const emitter = new EventEmitter();
 
 const init = () => {
   if (initialized) return;
   // enable audio interruptions
   MediaControls.enableAudioInterruption(true).catch(console.error);
   MediaControls.enableBackgroundMode(true);
+
+  MediaControls.setControlEnabled('play', true);
+  MediaControls.setControlEnabled('pause', true);
+  MediaControls.setControlEnabled('seek', true);
+  MediaControls.setControlEnabled('skipToPrevious', true);
+  MediaControls.setControlEnabled('skipToNext', true);
+  MediaControls.setControlEnabled('seekForward', true);
+  MediaControls.setControlEnabled('seekBackward', true);
+  MediaControls.setControlEnabled('stop', true);
 
   Sound.setCategory('Playback', true);
   initialized = true;
@@ -49,6 +60,10 @@ export const loadTrack = (
 ) => {
   init();
 
+  if (index === currentTrackIndex) {
+    return;
+  }
+
   if (sound) {
     sound.release();
     sound = null;
@@ -56,12 +71,14 @@ export const loadTrack = (
   const track = tracks[index];
   if (!track) return;
   currentTrackIndex = index;
+  emitter.emit('trackChanged', index);
   sound = new Sound(track.url, undefined, (error, props) => {
     if (error) {
       console.log('Failed to load the sound', error);
       return;
     }
     duration = props.duration ?? 0;
+    emitter.emit('duration', duration);
     if (requestPlay) {
       setPlaying(true);
       requestPlay = false;
@@ -95,6 +112,7 @@ export const setPlaying = (newPlaying: boolean, finished?: () => unknown) => {
     return;
   }
   playing = newPlaying;
+  emitter.emit('playing', newPlaying);
   if (newPlaying) {
     sound.play(finished);
   } else {
@@ -120,8 +138,8 @@ export const backgroundMusicHandler = async (event: BackgroundEvent) => {
       sound = null;
       break;
     case 'seek':
-      if (event.data.position !== undefined) {
-        sound?.setCurrentTime(event.data.position);
+      if (event.data.seekPosition !== undefined) {
+        sound?.setCurrentTime(event.data.seekPosition);
       }
       break;
     case 'skipToNext':
