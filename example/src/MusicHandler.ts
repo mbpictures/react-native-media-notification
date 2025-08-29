@@ -174,7 +174,6 @@ export const backgroundMusicHandler = async (event: BackgroundEvent) => {
       if (event.data.mediaItems && event.data.mediaItems.length > 0) {
         const index = resolveTrackIndex(event.data.mediaItems[0]);
         loadTrack(index);
-        sound?.play();
       }
       break;
   }
