@@ -2,6 +2,7 @@ package com.mediacontrols
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -10,6 +11,8 @@ import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.google.common.collect.ImmutableList
 import androidx.core.content.edit
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaSession
 
 class MediaStore {
     interface Listener {
@@ -118,6 +121,14 @@ class MediaStore {
 
         val results = searchElements(mediaItemsHierarchy!!, words)
         return LibraryResult.ofItemList(results.paginate(page, pageSize).map { buildMediaItem(it) }, null)
+    }
+
+    @OptIn(UnstableApi::class)
+    fun getLastMediaItem(): MediaSession.MediaItemsWithStartPosition {
+        if (sharedPrefs == null || mediaItemsHierarchy == null) return MediaSession.MediaItemsWithStartPosition(emptyList(), 0, 0)
+        val lastId = sharedPrefs!!.getString(KEY_CURRENT_ID, null) ?: return MediaSession.MediaItemsWithStartPosition(emptyList(), 0, 0)
+        val item = findElementById(mediaItemsHierarchy!!, lastId) ?: return MediaSession.MediaItemsWithStartPosition(emptyList(), 0, 0)
+        return MediaSession.MediaItemsWithStartPosition(listOf(buildMediaItem(item)), 0, 0)
     }
 
     private fun findElementById(element: MediaElement, id: String): MediaElement? {

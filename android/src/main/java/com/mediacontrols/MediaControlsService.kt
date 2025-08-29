@@ -289,5 +289,14 @@ class MediaControlsService : MediaLibraryService() {
                 MediaStore.Instance.search(query, page, pageSize)
             )
         }
+
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.getLastMediaItem()
+            )
+        }
     }
 }
