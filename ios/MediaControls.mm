@@ -161,6 +161,10 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
     }
 }
 
+RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::INativeLibraryItem &)library) {
+    //TODO: implement for iOS
+}
+
 RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     @try {
