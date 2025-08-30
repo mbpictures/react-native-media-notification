@@ -161,7 +161,7 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
     }
 }
 
-RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::INativeLibraryItem &)library) {
+RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::NativeLibraryItem &)library) {
     //TODO: implement for iOS
 }
 
