@@ -55,7 +55,7 @@ export interface NativeLibraryItem {
   browsable?: boolean;
   mediaType?: string;
 
-  items?: NativeLibraryItem[];
+  items?: UnsafeObject[];
 }
 
 export interface Spec extends TurboModule {
