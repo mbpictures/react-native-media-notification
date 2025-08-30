@@ -317,7 +317,8 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
         }
     } else if (interruptionType == AVAudioSessionInterruptionTypeEnded) {
         self.audioInterrupted = false;
-        if (!self.explictlyPaused) {
+        NSInteger options = [notification.userInfo[AVAudioSessionInterruptionOptionKey] integerValue];
+        if (!self.explictlyPaused && options == AVAudioSessionInterruptionOptionShouldResume) {
             [self emitEvent:@"play" position:nil];
         }
     }
