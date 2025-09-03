@@ -146,7 +146,7 @@ class MediaStore {
             results.add(element)
         }
         element.items?.forEach { child ->
-            searchElements(child, words)
+            searchElements(child, words).forEach { results.add(it) }
         }
 
         return results
