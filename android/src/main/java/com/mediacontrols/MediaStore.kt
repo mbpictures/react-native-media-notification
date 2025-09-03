@@ -156,11 +156,11 @@ class MediaStore {
         val searchText = (element.title ?: "") + " " + (element.artist ?: "") + " " + (element.album ?: "")
         val lowerSearchText = searchText.lowercase()
         for (word in words) {
-            if (!lowerSearchText.contains(word)) {
-                return false
+            if (lowerSearchText.contains(word)) {
+                return true
             }
         }
-        return true
+        return false
     }
 
     inline fun MediaItem.Builder.setMediaMetadata(element: MediaElement): MediaItem.Builder {
