@@ -115,12 +115,24 @@ class MediaStore {
         )
     }
 
+    private fun buildWordList(query: String): List<String> {
+        return query.split(" ").map { it.trim().lowercase() }.filter { it.length > 1 }
+    }
+
     fun search(query: String, page: Int, pageSize: Int): LibraryResult<ImmutableList<MediaItem>>? {
         if (mediaItemsHierarchy == null) return null
-        val words = query.split(" ").map { it.trim().lowercase() }.filter { it.length > 1 }
+        val words = this.buildWordList(query)
 
         val results = searchElements(mediaItemsHierarchy!!, words)
         return LibraryResult.ofItemList(results.paginate(page, pageSize).map { buildMediaItem(it) }, null)
+    }
+
+    fun searchCount(query: String): Int {
+        if (mediaItemsHierarchy == null) return 0
+        val words = this.buildWordList(query)
+
+        val results = searchElements(mediaItemsHierarchy!!, words)
+        return results.size
     }
 
     @OptIn(UnstableApi::class)

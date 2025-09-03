@@ -290,6 +290,18 @@ class MediaControlsService : MediaLibraryService() {
             )
         }
 
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<Void>> {
+            session.notifySearchResultChanged(browser, query, MediaStore.Instance.searchCount(query), params)
+            return Futures.immediateFuture(
+                LibraryResult.ofVoid()
+            )
+        }
+
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo
