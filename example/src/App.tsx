@@ -17,16 +17,32 @@ export default function App() {
       title: 'Media Library',
       browsable: true,
       playable: false,
-      items: MusicHandler.tracks.map((track, index) => ({
-        id: `track-${index}`,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        artwork: track.artwork,
-        duration: 0,
-        playable: true,
-        mediaItem: 'music',
-      })),
+      items: [
+        {
+          id: 'album',
+          title: 'Album',
+          browsable: true,
+          playable: false,
+          items: [
+            {
+              id: 'tracks',
+              title: 'All Tracks',
+              browsable: true,
+              playable: false,
+              items: MusicHandler.tracks.map((track, index) => ({
+                id: `track-${index}`,
+                title: track.title,
+                artist: track.artist,
+                album: track.album,
+                artwork: track.artwork,
+                duration: 0,
+                playable: true,
+                mediaItem: 'music',
+              })),
+            },
+          ],
+        },
+      ],
     });
     const playingSub = MusicHandler.emitter.addListener(
       'playing',
