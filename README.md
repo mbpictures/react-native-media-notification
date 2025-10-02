@@ -190,7 +190,7 @@ Registers an event listener for a specific media control event. Returns a functi
 
 #### `removeAllListeners(event?: MediaControlEvent): void`
 
-Entfernt alle Event Listener für ein bestimmtes Event oder alle Events, wenn kein Event angegeben ist.
+Removes all event listeners for an specific event or for all events, when no event has been specified.
 
 ### Types
 
