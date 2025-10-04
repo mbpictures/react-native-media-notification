@@ -184,6 +184,29 @@ class MediaControlsService : MediaLibraryService() {
             //mediaSession?.setCustomLayout(CustomCommandButton.entries.map { c -> c.commandButton })
         }
 
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent
+        ): Boolean {
+            if (controllerInfo.packageName == "com.android.bluetooth" && intent.action == Intent.ACTION_MEDIA_BUTTON) {
+                val keyEvent = intent.parcelable<android.view.KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                if (keyEvent != null && keyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                    when (keyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                            player?.seekToNextMediaItem()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                            player?.seekToPreviousMediaItem()
+                            return true
+                        }
+                    }
+                }
+            }
+            return super.onMediaButtonEvent(session, controllerInfo, intent)
+        }
+
         override fun onCustomCommand(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
