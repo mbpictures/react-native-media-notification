@@ -144,19 +144,19 @@ export const backgroundMusicHandler = async (event: BackgroundEvent) => {
       }
       break;
     case 'skipToNext':
-      currentTrackIndex++;
-      if (currentTrackIndex >= tracks.length) {
-        currentTrackIndex = 0;
+      let nextIndex = currentTrackIndex + 1;
+      if (nextIndex >= tracks.length) {
+        nextIndex = 0;
       }
-      loadTrack(currentTrackIndex);
+      loadTrack(nextIndex);
       setPlaying(true);
       break;
     case 'skipToPrevious':
-      currentTrackIndex--;
-      if (currentTrackIndex < 0) {
-        currentTrackIndex = tracks.length - 1;
+      let prevIndex = currentTrackIndex - 1;
+      if (prevIndex < 0) {
+        prevIndex = tracks.length - 1;
       }
-      loadTrack(currentTrackIndex);
+      loadTrack(prevIndex);
       setPlaying(true);
       break;
     case 'seekForward':
