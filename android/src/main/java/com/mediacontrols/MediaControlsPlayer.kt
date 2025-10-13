@@ -81,6 +81,17 @@ class MediaControlsPlayer(
         return Futures.immediateFuture(null)
     }
 
+    override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
+        val modeString = when (repeatMode) {
+            Player.REPEAT_MODE_OFF -> "off"
+            Player.REPEAT_MODE_ONE -> "one"
+            Player.REPEAT_MODE_ALL -> "all"
+            else -> "off"
+        }
+        sendEvent(Controls.REPEAT_MODE, Arguments.createMap().apply { putString("repeatMode", modeString) })
+        return Futures.immediateFuture(null)
+    }
+
     override fun handleSeek(
         mediaItemIndex: Int,
         positionMs: Long,
