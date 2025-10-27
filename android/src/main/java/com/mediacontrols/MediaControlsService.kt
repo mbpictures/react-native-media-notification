@@ -142,12 +142,12 @@ class MediaControlsService : MediaLibraryService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // fixes crash according to: https://github.com/androidx/media/issues/422#issuecomment-2308495584
-        mediaSession = null
+        this.stopNotificationAndService()
         super.onTaskRemoved(rootIntent)
     }
 
     fun stopNotificationAndService() {
+        player?.sendEvent(Controls.STOP, null)
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
         stopSelf()
         player?.releaseFocus()
