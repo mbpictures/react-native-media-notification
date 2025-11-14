@@ -153,8 +153,8 @@ class MediaControlsService : MediaLibraryService() {
         player?.releaseFocus()
         mediaSession?.runCatching {
             release()
-            mediaSession = null
         }
+        mediaSession = null
     }
 
     fun getPlayer(): MediaControlsPlayer? = player
