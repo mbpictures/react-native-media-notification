@@ -92,6 +92,11 @@ class MediaControlsPlayer(
         return Futures.immediateFuture(null)
     }
 
+    override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
+        sendEvent(Controls.SHUFFLE, Arguments.createMap().apply { putBoolean("shuffleMode", shuffleModeEnabled) })
+        return Futures.immediateFuture(null)
+    }
+
     override fun handleSeek(
         mediaItemIndex: Int,
         positionMs: Long,
