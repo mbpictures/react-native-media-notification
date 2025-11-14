@@ -36,6 +36,8 @@ export interface LibraryItem
 export type MediaControlEventData = {
   seekPosition?: number;
   mediaItems?: string[];
+  shuffleMode?: boolean;
+  repeatMode?: 'off' | 'one' | 'all';
 };
 
 const eventEmitter = new EventEmitter();
