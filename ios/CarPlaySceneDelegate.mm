@@ -80,13 +80,13 @@ didDisconnectInterfaceController:(CPInterfaceController *)interfaceController {
                                                  detailText:child.artist];
         item.accessoryType = child.browsable ? CPListItemAccessoryTypeDisclosureIndicator : CPListItemAccessoryTypeNone;
 
-        __weak typeof(self) weakSelf = self;
+        __weak CarPlaySceneDelegate *weakSelf = self;
         NSString *childId = child.itemId;
         BOOL childPlayable = child.playable;
         BOOL childBrowsable = child.browsable;
 
         item.handler = ^(id<CPSelectableListItem> _Nonnull selectedItem, dispatch_block_t _Nonnull completionHandler) {
-            __strong typeof(weakSelf) strongSelf = weakSelf;
+            CarPlaySceneDelegate *strongSelf = weakSelf;
             if (!strongSelf) {
                 completionHandler();
                 return;
