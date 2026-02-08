@@ -180,7 +180,7 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
 
 RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::NativeLibraryItem &)library) {
     MediaElement *root = [[MediaElement alloc] init];
-    root.itemId = library.id();
+    root.itemId = library.id_();
     root.title = library.title();
     root.artist = library.artist();
     root.album = library.album();
