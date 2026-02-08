@@ -1,6 +1,8 @@
 #import "MediaControls.h"
 #import <MediaPlayer/MediaPlayer.h>
 #import <AVFoundation/AVFoundation.h>
+#import "MediaElement.h"
+#import "MediaLibraryStore.h"
 
 @interface MediaControls ()
 @property (nonatomic, assign) BOOL audioInterruptionEnabled;
@@ -162,7 +164,41 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
 }
 
 RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::NativeLibraryItem &)library) {
-    //TODO: implement for iOS
+    MediaElement *root = [[MediaElement alloc] init];
+    root.itemId = library.id();
+    root.title = library.title();
+    root.artist = library.artist();
+    root.album = library.album();
+    root.artwork = library.artwork();
+    root.mediaType = library.mediaType();
+
+    if (library.duration().has_value()) {
+        root.duration = @(library.duration().value());
+    }
+    if (library.playable().has_value()) {
+        root.playable = library.playable().value();
+    }
+    if (library.browsable().has_value()) {
+        root.browsable = library.browsable().value();
+    }
+
+    auto itemsOpt = library.items();
+    if (itemsOpt.has_value()) {
+        auto items = itemsOpt.value();
+        NSMutableArray<MediaElement *> *children = [NSMutableArray array];
+        for (size_t i = 0; i < items.size(); i++) {
+            id obj = items.at(i);
+            if ([obj isKindOfClass:[NSDictionary class]]) {
+                MediaElement *child = [MediaElement fromDictionary:(NSDictionary *)obj];
+                if (child) {
+                    [children addObject:child];
+                }
+            }
+        }
+        root.items = children;
+    }
+
+    [[MediaLibraryStore sharedInstance] setLibrary:root];
 }
 
 RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
