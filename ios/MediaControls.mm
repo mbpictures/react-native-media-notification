@@ -24,6 +24,7 @@ RCT_EXPORT_MODULE()
     if (self) {
         _audioInterruptionEnabled = NO;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioHardwareRouteChanged:) name:AVAudioSessionRouteChangeNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayItemSelected:) name:CarPlayItemSelectedNotification object:nil];
         [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
     return self;
@@ -33,8 +34,22 @@ RCT_EXPORT_MODULE()
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (void)onCarPlayItemSelected:(NSNotification *)notification {
+    NSArray *mediaItems = notification.userInfo[@"mediaItems"];
+    if (!mediaItems) return;
+
+    NSMutableDictionary *params = [NSMutableDictionary dictionary];
+    params[@"command"] = @"setMediaItems";
+
+    NSMutableDictionary *data = [NSMutableDictionary dictionary];
+    data[@"mediaItems"] = mediaItems;
+    params[@"data"] = data;
+
+    [self emitOnEvent:params];
+}
+
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"play", @"pause", @"stop", @"skipToNext", @"skipToPrevious", @"seekForward", @"seekBackward", @"seek"];
+    return @[@"play", @"pause", @"stop", @"skipToNext", @"skipToPrevious", @"seekForward", @"seekBackward", @"seek", @"setMediaItems"];
 }
 
 #pragma mark - React Native Methods
@@ -217,6 +232,7 @@ RCT_EXPORT_METHOD(shutdown) {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionInterruptionNotification object:nil];
     _audioInterruptionEnabled = false;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayItemSelectedNotification object:nil];
   
   
     MPRemoteCommandCenter *remoteCenter = [MPRemoteCommandCenter sharedCommandCenter];
