@@ -23,6 +23,7 @@
 - 🎨 Album Artwork Support (URL-based)
 - 🔊 Audio Interruption Handling
 - 📱 iOS Control Center Integration
+- 🚗 Apple CarPlay Support
 - 🤖 Android Media3 Session Support
 - 🎯 TypeScript Support
 - ⚡ New Architecture (Turbo Modules) Ready
@@ -42,6 +43,62 @@ yarn add react-native-media-notification
 ```bash
 cd ios && pod install
 ```
+
+#### Background Audio
+
+Add the `audio` background mode to your `Info.plist`:
+
+```xml
+<key>UIBackgroundModes</key>
+<array>
+    <string>audio</string>
+</array>
+```
+
+#### CarPlay
+
+To enable Apple CarPlay support, the following additional configuration is required:
+
+1. **Entitlement**: Your app must have the `com.apple.developer.carplay-audio` entitlement. Request this from Apple via the [CarPlay entitlement request form](https://developer.apple.com/contact/carplay/).
+
+2. **Scene Configuration**: Add the CarPlay scene to your `Info.plist`:
+
+```xml
+<key>UIApplicationSceneManifest</key>
+<dict>
+    <key>UIApplicationSupportsMultipleScenes</key>
+    <true/>
+    <key>UISceneConfigurations</key>
+    <dict>
+        <!-- Your existing phone scene configuration -->
+        <key>UIWindowSceneSessionRoleApplication</key>
+        <array>
+            <dict>
+                <key>UISceneConfigurationName</key>
+                <string>Default Configuration</string>
+                <key>UISceneDelegateClassName</key>
+                <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+                <key>UISceneStoryboardFile</key>
+                <string>Main</string>
+            </dict>
+        </array>
+        <!-- CarPlay scene configuration -->
+        <key>CPTemplateApplicationSceneSessionRoleApplication</key>
+        <array>
+            <dict>
+                <key>UISceneClassName</key>
+                <string>CPTemplateApplicationScene</string>
+                <key>UISceneConfigurationName</key>
+                <string>CarPlay</string>
+                <key>UISceneDelegateClassName</key>
+                <string>CarPlaySceneDelegate</string>
+            </dict>
+        </array>
+    </dict>
+</dict>
+```
+
+> **Note**: If your app does not already use scenes (i.e., it uses the older `AppDelegate`-based lifecycle), you may need to also add a `UIWindowSceneSessionRoleApplication` entry for the main app window. For a standard React Native app, you typically only need to add the `CPTemplateApplicationSceneSessionRoleApplication` section alongside your existing configuration.
 
 ### Android
 
@@ -235,6 +292,8 @@ type MediaControlEventData = {
 - Integrates in Control Center and Lock Screen
 - Supports ear bud and other external controls
 - Requires Background Audio Capability for Background Playback
+- CarPlay uses CPTabBarTemplate with browsable media library
+- CarPlay requires `com.apple.developer.carplay-audio` entitlement and scene configuration in Info.plist
 
 ## License
 
