@@ -9,32 +9,31 @@ import android.os.Binder
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.view.KeyEvent
 import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaController
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
-import com.facebook.react.bridge.ReactApplicationContext
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 
 @UnstableApi
-class MediaControlsService : MediaSessionService() {
+class MediaControlsService : MediaLibraryService() {
 
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
     private val binder = LocalBinder()
     private var mediaController: MediaController? = null
 
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
-        var reactContext: ReactApplicationContext? = null
         var player: MediaControlsPlayer? = null
     }
 
@@ -55,9 +54,8 @@ class MediaControlsService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        // TODO: handle headless service with HeadlessJsTask
-        if (player == null || reactContext == null) {
-            return
+        if (player == null) {
+            player = MediaControlsPlayer(this)
         }
 
         // Create notification channel for Android O and above
@@ -66,8 +64,7 @@ class MediaControlsService : MediaSessionService() {
         }
 
         // Create media session
-        mediaSession = MediaSession.Builder(this, player!!)
-            .setCallback(MediaSessionCallback())
+        mediaSession = MediaLibrarySession.Builder(this, player!!, MediaSessionCallback())
             .setId("MediaControlsSession")
             .build()
 
@@ -87,6 +84,13 @@ class MediaControlsService : MediaSessionService() {
 
         // Create MediaController for media controls
         setupMediaController()
+
+        MediaStore.init(this)
+        MediaStore.Instance.addListener(object: MediaStore.Listener {
+            override fun onMediaItemsUpdated(parentId: String?, itemCount: Int) {
+                mediaSession?.notifyChildrenChanged(parentId ?: "root", itemCount, null)
+            }
+        })
 
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
     }
@@ -128,7 +132,7 @@ class MediaControlsService : MediaSessionService() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
@@ -138,31 +142,31 @@ class MediaControlsService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // fixes crash according to: https://github.com/androidx/media/issues/422#issuecomment-2308495584
-        mediaSession = null
+        this.stopNotificationAndService()
         super.onTaskRemoved(rootIntent)
     }
 
     fun stopNotificationAndService() {
+        player?.sendEvent(Controls.STOP, null)
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
         stopSelf()
         player?.releaseFocus()
         mediaSession?.runCatching {
             release()
-            mediaSession = null
         }
+        mediaSession = null
     }
 
     fun getPlayer(): MediaControlsPlayer? = player
 
-    private inner class MediaSessionCallback : MediaSession.Callback {
+    private inner class MediaSessionCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             // Accept all connections and provide full access to player commands
-            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                 .addSessionCommands(CustomCommandButton.entries.map { c -> c.commandButton.sessionCommand!! })
                 .build()
 
@@ -178,6 +182,29 @@ class MediaControlsService : MediaSessionService() {
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             super.onPostConnect(session, controller)
             //mediaSession?.setCustomLayout(CustomCommandButton.entries.map { c -> c.commandButton })
+        }
+
+        override fun onMediaButtonEvent(
+            session: MediaSession,
+            controllerInfo: MediaSession.ControllerInfo,
+            intent: Intent
+        ): Boolean {
+            if (controllerInfo.packageName == "com.android.bluetooth" && intent.action == Intent.ACTION_MEDIA_BUTTON) {
+                val keyEvent = intent.parcelable<android.view.KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                if (keyEvent != null && keyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                    when (keyEvent.keyCode) {
+                        android.view.KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                            player?.seekToNextMediaItem()
+                            return true
+                        }
+                        android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                            player?.seekToPreviousMediaItem()
+                            return true
+                        }
+                    }
+                }
+            }
+            return super.onMediaButtonEvent(session, controllerInfo, intent)
         }
 
         override fun onCustomCommand(
@@ -244,6 +271,73 @@ class MediaControlsService : MediaSessionService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs)
+            )
+        }
+
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            mediaId: String
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.getItem(mediaId)
+            )
+        }
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.getRoot()
+            )
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.getChildren(parentId, page, pageSize)
+            )
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.search(query, page, pageSize)
+            )
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<Void>> {
+            session.notifySearchResultChanged(browser, query, MediaStore.Instance.searchCount(query), params)
+            return Futures.immediateFuture(
+                LibraryResult.ofVoid()
+            )
+        }
+
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            return Futures.immediateFuture(
+                MediaStore.Instance.getLastMediaItem()
             )
         }
     }

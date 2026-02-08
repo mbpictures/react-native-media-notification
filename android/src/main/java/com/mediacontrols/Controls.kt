@@ -12,7 +12,8 @@ enum class Controls(val code: String) {
     DUCK("duck"),
     UN_DUCK("unDuck"),
     SHUFFLE("shuffle"),
-    REPEAT_MODE("repeatMode");
+    REPEAT_MODE("repeatMode"),
+    SET_MEDIA_ITEMS("setMediaItems");
 
     companion object {
         fun fromString(value: String): Controls? {

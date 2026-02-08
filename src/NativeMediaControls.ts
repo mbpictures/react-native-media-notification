@@ -1,6 +1,9 @@
 import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
-import type { EventEmitter } from 'react-native/Libraries/Types/CodegenTypes';
+import type {
+  EventEmitter,
+  UnsafeObject,
+} from 'react-native/Libraries/Types/CodegenTypes';
 
 // Event types
 export const ALL_MEDIA_EVENTS = [
@@ -17,9 +20,14 @@ export const ALL_MEDIA_EVENTS = [
 ] as const;
 export type MediaControl = (typeof ALL_MEDIA_EVENTS)[number];
 
-export type MediaControlEvent = MediaControl | 'duck' | 'unDuck';
+export type MediaControlEvent =
+  | MediaControl
+  | 'duck'
+  | 'unDuck'
+  | 'setMediaItems';
 
 export interface NativeMediaTrackMetadata {
+  id?: string;
   title?: string;
   artist?: string;
   album?: string;
@@ -33,7 +41,21 @@ export interface NativeMediaTrackMetadata {
 
 export interface NativeEvent {
   command: string;
-  seekPosition?: number; // Position in seconds for seek events
+  data: UnsafeObject; // Position in seconds for seek events
+}
+
+export interface NativeLibraryItem {
+  id: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  artwork?: string;
+  duration?: number;
+  playable?: boolean;
+  browsable?: boolean;
+  mediaType?: string;
+
+  items?: UnsafeObject[];
 }
 
 export interface Spec extends TurboModule {
@@ -48,6 +70,8 @@ export interface Spec extends TurboModule {
   enableBackgroundMode(enabled: boolean): void;
 
   shutdown(): void;
+
+  setMediaLibrary(library: NativeLibraryItem): void;
 
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;

@@ -1,5 +1,6 @@
 package com.mediacontrols
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
@@ -13,7 +14,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
-import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.views.imagehelper.ResourceDrawableIdHelper
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -26,12 +28,11 @@ import java.io.ByteArrayOutputStream
 
 @UnstableApi
 class MediaControlsPlayer(
-    private val reactContext: ReactApplicationContext,
-    private val module: MediaControlsModule,
+    private val context: Context
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var currentState = State.Builder().build()
+    private var currentState = State.Builder().setAvailableCommands(getCommands()).build()
 
     // Track metadata
     private var currentMetadata: MediaTrackMetadata? = null
@@ -39,7 +40,7 @@ class MediaControlsPlayer(
     // Audio interruption
     private var audioInterruptionEnabled = false
 
-    private var audioFocusListener = AudioFocusListener(reactContext, module, this)
+    private var audioFocusListener = AudioFocusListener(context, this)
 
     // Control states
     private val enabledControls = mutableMapOf<Controls, Boolean>()
@@ -67,9 +68,6 @@ class MediaControlsPlayer(
     }
 
     override fun handlePrepare(): ListenableFuture<*> {
-        updateState { builder ->
-            builder.setPlaybackState(Player.STATE_READY)
-        }
         return Futures.immediateFuture(null)
     }
 
@@ -79,7 +77,23 @@ class MediaControlsPlayer(
                 .setPlaybackState(Player.STATE_IDLE)
         }
 
-        module.sendEvent(Controls.STOP, null)
+        sendEvent(Controls.STOP, null)
+        return Futures.immediateFuture(null)
+    }
+
+    override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
+        val modeString = when (repeatMode) {
+            Player.REPEAT_MODE_OFF -> "off"
+            Player.REPEAT_MODE_ONE -> "one"
+            Player.REPEAT_MODE_ALL -> "all"
+            else -> "off"
+        }
+        sendEvent(Controls.REPEAT_MODE, Arguments.createMap().apply { putString("repeatMode", modeString) })
+        return Futures.immediateFuture(null)
+    }
+
+    override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
+        sendEvent(Controls.SHUFFLE, Arguments.createMap().apply { putBoolean("shuffleMode", shuffleModeEnabled) })
         return Futures.immediateFuture(null)
     }
 
@@ -96,18 +110,18 @@ class MediaControlsPlayer(
         // Handle different seek commands
         when (seekCommand) {
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-                module.sendEvent(Controls.NEXT, null)
+                sendEvent(Controls.NEXT, null)
             }
             Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-                module.sendEvent(Controls.PREVIOUS, null)
+                sendEvent(Controls.PREVIOUS, null)
             }
             Player.COMMAND_SEEK_FORWARD -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent(Controls.SEEK_FORWARD, positionSeconds)
+                sendEvent(Controls.SEEK_FORWARD, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
             }
             Player.COMMAND_SEEK_BACK -> {
                 val positionSeconds = (positionMs / 1000).toInt()
-                module.sendEvent(Controls.SEEK_BACKWARD, positionSeconds)
+                sendEvent(Controls.SEEK_BACKWARD, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
             }
             else -> {
                 emitSeekEvent(positionMs)
@@ -122,26 +136,24 @@ class MediaControlsPlayer(
         startIndex: Int,
         startPositionMs: Long
     ): ListenableFuture<*> {
-        val mediaItemDataList = mediaItems.map { mediaItem ->
-            MediaItemData.Builder(mediaItem.mediaId)
-                .setMediaItem(mediaItem)
-                .build()
-        }
-
-        updateState { builder ->
-            builder.setPlaylist(mediaItemDataList)
-                .setCurrentMediaItemIndex(startIndex)
-                .setContentPositionMs(startPositionMs)
-        }
+        sendEvent(
+            Controls.SET_MEDIA_ITEMS,
+            Arguments.createMap().apply {
+                putArray(
+                    "mediaItems",
+                    Arguments.createArray().apply { mediaItems.forEach { item -> pushString(item.mediaId) } }
+                )
+            }
+        )
         return Futures.immediateFuture(null)
     }
 
     fun emitShuffleClicked() {
-        module.sendEvent(Controls.SHUFFLE, null)
+        sendEvent(Controls.SHUFFLE, null)
     }
 
     fun emitRepeatClicked() {
-        module.sendEvent(Controls.REPEAT_MODE, null)
+        sendEvent(Controls.REPEAT_MODE, null)
     }
 
     // Custom methods for React Native integration
@@ -167,8 +179,9 @@ class MediaControlsPlayer(
             }
             .build()
 
-        // Create unique media ID for Android Auto
-        val mediaId = "${metadata.title}_${metadata.artist}".replace(" ", "_")
+        val mediaId = metadata.id ?: "${metadata.title}_${metadata.artist}".replace(" ", "_")
+
+        MediaStore.Instance.storeCurrentMediaId(mediaId)
 
         val mediaItem = MediaItem.Builder()
             .setMediaId(mediaId)
@@ -226,7 +239,7 @@ class MediaControlsPlayer(
             this.setArtworkUri(artwork.toUri())
         } else {
             val helper = ResourceDrawableIdHelper.getInstance()
-            val image = helper.getResourceDrawable(reactContext, artwork)
+            val image = helper.getResourceDrawable(context, artwork)
 
             val bitmap = if (image is BitmapDrawable) {
                 image.bitmap
@@ -242,27 +255,25 @@ class MediaControlsPlayer(
 
     fun setControlEnabled(controlName: Controls, enabled: Boolean) {
         enabledControls[controlName] = enabled
+    }
 
-        // Update available commands based on enabled controls
+    fun getCommands(): Player.Commands {
         val availableCommands = mutableSetOf<Int>().apply {
-            if (enabledControls[Controls.PLAY] == true || enabledControls[Controls.PAUSE] == true) add(Player.COMMAND_PLAY_PAUSE)
-            if (enabledControls[Controls.STOP] == true) add(Player.COMMAND_STOP)
-            if (enabledControls[Controls.NEXT] == true) add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-            if (enabledControls[Controls.PREVIOUS] == true) add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-            if (enabledControls[Controls.SEEK] == true) add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-            if (enabledControls[Controls.SEEK_FORWARD] == true) add(Player.COMMAND_SEEK_FORWARD)
-            if (enabledControls[Controls.SEEK_BACKWARD] == true) add(Player.COMMAND_SEEK_BACK)
-            if (enabledControls[Controls.SHUFFLE] == true) add(Player.COMMAND_SET_SHUFFLE_MODE)
-            if (enabledControls[Controls.REPEAT_MODE] == true) add(Player.COMMAND_SET_REPEAT_MODE)
-
+            add(Player.COMMAND_PLAY_PAUSE)
+            add(Player.COMMAND_STOP)
+            add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_FORWARD)
+            add(Player.COMMAND_SEEK_BACK)
+            add(Player.COMMAND_SET_SHUFFLE_MODE)
+            add(Player.COMMAND_SET_REPEAT_MODE)
             add(Player.COMMAND_PREPARE)
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             add(Player.COMMAND_GET_METADATA)
+            add(Player.COMMAND_SET_MEDIA_ITEM)
         }
-
-        updateState { builder ->
-            builder.setAvailableCommands(Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build())
-        }
+        return Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build()
     }
 
     fun getAvailableCustomCommands(): Set<CommandButton> {
@@ -327,21 +338,26 @@ class MediaControlsPlayer(
 
     private fun emitPlaybackStateChanged(isPlaying: Boolean) {
         val command = if (isPlaying) Controls.PLAY else Controls.PAUSE
-        module.sendEvent(command, null)
+        sendEvent(command, null)
     }
 
     private fun emitSeekEvent(positionMs: Long) {
         val positionSeconds = (positionMs / 1000).toInt()
-        module.sendEvent(Controls.SEEK, positionSeconds)
+        sendEvent(Controls.SEEK, Arguments.createMap().apply { putInt("seekPosition", positionSeconds) })
     }
 
     fun cleanup() {
         scope.cancel()
     }
+
+    fun sendEvent(command: Controls, data: WritableMap?) {
+        EventEmitter.sendEvent(context, command, data)
+    }
 }
 
 // Data class for metadata
 data class MediaTrackMetadata(
+    val id: String? = null,
     val title: String? = null,
     val artist: String? = null,
     val album: String? = null,
@@ -354,6 +370,7 @@ data class MediaTrackMetadata(
 ) {
 
     fun merge(other: MediaTrackMetadata): MediaTrackMetadata = MediaTrackMetadata(
+        id = other.id ?: this.id,
         title = other.title ?: this.title,
         artist = other.artist ?: this.artist,
         album = other.album ?: this.album,

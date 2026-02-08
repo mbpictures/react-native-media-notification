@@ -1,5 +1,6 @@
 package com.mediacontrols
 
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -7,10 +8,11 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
 
 @ReactModule(name = MediaControlsModule.NAME)
@@ -20,7 +22,6 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   private var mediaService: MediaControlsService? = null
   private var serviceBound = false
-  private var serviceInitialized = false // Flag to track if service has been initialized
 
   private val serviceConnection = object : ServiceConnection {
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -34,11 +35,12 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
       serviceBound = false
     }
   }
-
   init {
-    // Set react context for the service, but don't start it yet
-    MediaControlsService.reactContext = reactContext
-    MediaControlsService.player = MediaControlsPlayer(reactContext, this)
+    MediaStore.init(reactContext)
+    if (MediaControlsService.player == null) {
+      MediaControlsService.player = MediaControlsPlayer(reactContext)
+    }
+    Instance = this
   }
 
   override fun getName(): String {
@@ -58,6 +60,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
       ensureServiceStarted()
 
       val trackMetadata = MediaTrackMetadata(
+        id = if (metadata.hasKey("id")) metadata.getString("id") else null,
         title = if (metadata.hasKey("title")) metadata.getString("title") else null,
         artist = if (metadata.hasKey("artist")) metadata.getString("artist") else null,
         album = if (metadata.hasKey("album")) metadata.getString("album") else null,
@@ -102,6 +105,11 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   override fun shutdown() {
     this.stopMediaService();
+    Instance = null
+  }
+
+  override fun setMediaLibrary(library: ReadableMap?) {
+    MediaStore.Instance.build(library)
   }
 
   @ReactMethod
@@ -145,18 +153,25 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   }
 
   private fun ensureServiceStarted() {
-    if (!serviceInitialized) {
+    if (!isServiceRunning(MediaControlsService::class.java)) {
       startMediaService()
-      serviceInitialized = true
     }
   }
 
-  fun sendEvent(eventName: Controls, position: Int?) {
+  private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+    val activityManager = reactApplicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    for (service in activityManager.getRunningServices(Int.Companion.MAX_VALUE)) {
+      if (serviceClass.name == service.service.className) {
+        return true
+      }
+    }
+    return false
+  }
+
+  fun sendEvent(eventName: Controls, data: WritableMap?) {
     val eventData = Arguments.createMap().apply {
         putString("command", eventName.code)
-        position?.let {
-          putInt("seekPosition", it)
-        }
+        putMap("data", data)
     }
     emitOnEvent(eventData)
   }
@@ -177,7 +192,6 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
     val intent = Intent(reactApplicationContext, MediaControlsService::class.java)
     reactApplicationContext.stopService(intent)
-    serviceInitialized = false
     mediaService = null
   }
 
@@ -188,5 +202,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
 
   companion object {
     const val NAME = "MediaControls"
+
+    var Instance : MediaControlsModule? = null
   }
 }

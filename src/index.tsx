@@ -2,21 +2,42 @@ import MediaControls, {
   ALL_MEDIA_EVENTS,
   type MediaControl,
   type MediaControlEvent,
+  type NativeLibraryItem,
 } from './NativeMediaControls';
 import type { NativeMediaTrackMetadata } from './NativeMediaControls';
 import { EventEmitter, EventSubscription } from 'fbemitter';
 import {
+  AppRegistry,
   type EventSubscription as NativeEventSubscription,
   Image,
 } from 'react-native';
 import type { ImageSourcePropType } from 'react-native/Libraries/Image/Image';
 
-interface MediaTrackMetadata extends Omit<NativeMediaTrackMetadata, 'artwork'> {
+export interface MediaTrackMetadata
+  extends Omit<NativeMediaTrackMetadata, 'artwork'> {
   artwork?: string | ImageSourcePropType;
 }
 
+export type MediaItemMediaType =
+  | 'music'
+  | 'podcast'
+  | 'radio'
+  | 'album'
+  | 'artist'
+  | 'genre'
+  | 'playlist';
+
+export interface LibraryItem
+  extends Omit<NativeLibraryItem, 'mediaType' | 'items'> {
+  items?: LibraryItem[];
+  mediaItem?: MediaItemMediaType;
+}
+
 export type MediaControlEventData = {
-  position?: number; // für seek events
+  seekPosition?: number;
+  mediaItems?: string[];
+  shuffleMode?: boolean;
+  repeatMode?: 'off' | 'one' | 'all';
 };
 
 const eventEmitter = new EventEmitter();
@@ -26,8 +47,8 @@ const setUpNativeEventListener = () => {
   if (unsubscribe) return;
 
   unsubscribe = MediaControls.onEvent((event) => {
-    const { command, seekPosition } = event;
-    eventEmitter.emit(command, { position: seekPosition });
+    const { command, data } = event;
+    eventEmitter.emit(command, data);
   });
 };
 
@@ -41,6 +62,14 @@ export async function updateMetadata(
     metadata.artwork = Image.resolveAssetSource(metadata.artwork).uri;
   }
   return MediaControls.updateMetadata(metadata as NativeMediaTrackMetadata);
+}
+
+/**
+ * Sets the media library for browsing and playback.
+ * @param library The root item of the media library hierarchy.
+ */
+export function setMediaLibrary(library: LibraryItem) {
+  return MediaControls.setMediaLibrary(library);
 }
 
 /**
@@ -98,5 +127,32 @@ export function removeAllListeners(event?: MediaControlEvent): void {
   }
 }
 
-// Export types
-export type { MediaTrackMetadata };
+export interface BackgroundEvent {
+  command: MediaControlEvent;
+  data: any;
+}
+
+type BackgroundMessageHandler = (event: BackgroundEvent) => Promise<void>;
+
+/**
+ * Sets the background message handler to process media control events when the app is in the background or terminated.
+ * @param handler The function to handle background media control events.
+ * @param appRegistry Optional AppRegistry instance to use for headless task registration. If not provided, uses the default AppRegistry.
+ */
+export function setBackgroundMessageHandler(
+  handler: BackgroundMessageHandler,
+  appRegistry?: typeof AppRegistry
+) {
+  const registry = appRegistry || AppRegistry;
+  registry.registerHeadlessTask('MediaControlsHeadlessTask', () => handler);
+}
+
+/**
+ * Sets up a foreground event handler to process media control events when the app is in the foreground.
+ * @param handler The function to handle media control events.
+ */
+export function foregroundEventHandler(handler: BackgroundMessageHandler) {
+  return MediaControls.onEvent((event) =>
+    handler({ command: event.command as MediaControlEvent, data: event.data })
+  );
+}

@@ -1,165 +1,75 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, Button, Text, StyleSheet, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Button, Text, StyleSheet } from 'react-native';
 import * as MediaControls from 'react-native-media-notification';
-import Sound from 'react-native-sound';
-
-const tracks = [
-  {
-    title: 'Relaxing Nature Sounds',
-    artist: 'Nature Sounds',
-    album: 'Peaceful Moments',
-    artwork: 'https://picsum.photos/seed/notification1/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-  },
-  {
-    title: 'Upbeat Song',
-    artist: 'Happy Band',
-    album: 'Feel Good Album',
-    artwork: 'https://picsum.photos/seed/notification2/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-  },
-  {
-    title: 'Classical Piece',
-    artist: 'Orchestra',
-    album: 'Symphonies',
-    artwork: 'https://picsum.photos/seed/notification3/300/300',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  },
-];
+import * as MusicHandler from './MusicHandler';
 
 export default function App() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(MusicHandler.playing);
   const [currentPosition, setCurrentPosition] = useState(0);
-  const [currentTrack, setCurrentTrack] = useState(0);
-  const sound = useRef<Sound | null>(null);
-  const [duration, setDuration] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState(
+    MusicHandler.currentTrackIndex
+  );
+  const [duration, setDuration] = useState(MusicHandler.duration);
 
-  const handleSetCurrentTrack = (index: number) => {
-    const track = tracks[index];
-    if (!track) return;
-    MediaControls.updateMetadata({
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      duration: 0,
-      position: 0,
-      isPlaying: isPlaying,
-      artwork: track.artwork,
-    }).catch(console.error);
-    setCurrentTrack(index);
-    setCurrentPosition(0);
-    setIsPlaying(false);
-  };
   useEffect(() => {
-    // Event Listeners Setup
-    const playListener = MediaControls.addEventListener('play', () => {
-      console.log('Play event received');
-      setIsPlaying(true);
-      sound.current?.play(handleFinished);
+    MediaControls.setMediaLibrary({
+      id: 'root',
+      title: 'Media Library',
+      browsable: true,
+      playable: false,
+      items: [
+        {
+          id: 'album',
+          title: 'Album',
+          browsable: true,
+          playable: false,
+          items: [
+            {
+              id: 'tracks',
+              title: 'All Tracks',
+              browsable: true,
+              playable: false,
+              items: MusicHandler.tracks.map((track, index) => ({
+                id: `track-${index}`,
+                title: track.title,
+                artist: track.artist,
+                album: track.album,
+                artwork: track.artwork,
+                duration: 0,
+                playable: true,
+                mediaItem: 'music',
+              })),
+            },
+          ],
+        },
+      ],
     });
-
-    const pauseListener = MediaControls.addEventListener('pause', () => {
-      console.log('Pause event received');
-      setIsPlaying(false);
-      sound.current?.pause();
-    });
-
-    const stopListener = MediaControls.addEventListener('stop', () => {
-      console.log('Stop event received');
-      stopPlayback().catch(console.error);
-    });
-
-    const nextListener = MediaControls.addEventListener('skipToNext', () => {
-      console.log('Skip to next event received');
-      nextTrack();
-    });
-
-    const prevListener = MediaControls.addEventListener(
-      'skipToPrevious',
-      () => {
-        console.log('Skip to previous event received');
-        prevTrack();
-      }
+    const playingSub = MusicHandler.emitter.addListener(
+      'playing',
+      setIsPlaying
+    );
+    const durationSub = MusicHandler.emitter.addListener(
+      'duration',
+      setDuration
+    );
+    const trackChangedSub = MusicHandler.emitter.addListener(
+      'trackChanged',
+      setCurrentTrack
     );
 
-    const seekListener = MediaControls.addEventListener('seek', (data) => {
-      console.log('Seek event received, position:', data?.position);
-      if (data?.position) {
-        sound.current?.setCurrentTime(data.position);
-      }
-    });
-
-    const seekForwardListener = MediaControls.addEventListener(
-      'seekForward',
-      () => {
-        console.log('Seek forward event received');
-        sound.current?.getCurrentTime((position) => {
-          sound.current?.setCurrentTime(
-            Math.min(position + 15, sound.current?.getDuration() ?? 0)
-          );
-        });
-      }
-    );
-
-    const seekBackwardListener = MediaControls.addEventListener(
-      'seekBackward',
-      () => {
-        console.log('Seek backward event received');
-        sound.current?.getCurrentTime((position) => {
-          sound.current?.setCurrentTime(Math.min(position - 15, 0));
-        });
-      }
-    );
-
-    // Cleanup
     return () => {
-      playListener.remove();
-      pauseListener.remove();
-      stopListener.remove();
-      nextListener.remove();
-      prevListener.remove();
-      seekListener.remove();
-      seekForwardListener.remove();
-      seekBackwardListener.remove();
+      MediaControls.shutdown();
+      playingSub.remove();
+      durationSub.remove();
+      trackChangedSub.remove();
     };
-  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    MediaControls.setControlEnabled('play', true);
-    MediaControls.setControlEnabled('pause', true);
-    MediaControls.setControlEnabled('seek', true);
-    MediaControls.setControlEnabled('skipToPrevious', true);
-    MediaControls.setControlEnabled('skipToNext', true);
-    MediaControls.setControlEnabled('seekForward', true);
-    MediaControls.setControlEnabled('seekBackward', true);
-    MediaControls.setControlEnabled('stop', true);
-
-    // enable audio interruptions
-    MediaControls.enableAudioInterruption(true).catch(console.error);
-    MediaControls.enableBackgroundMode(true);
-
-    Sound.setCategory('Playback', true);
-
-    return () => MediaControls.shutdown();
   }, []);
 
   useEffect(() => {
-    const track = tracks[currentTrack];
-    if (!track) return;
-    if (sound.current) {
-      sound.current.release();
-    }
-
-    sound.current = new Sound(track.url, undefined, (error, props) => {
-      if (error) {
-        Alert.alert('Error while sounding sound', error);
-        return;
-      }
-      setDuration(props.duration ?? 0);
-    });
+    MusicHandler.loadTrack(currentTrack, setDuration);
 
     const interval = setInterval(() => {
-      sound.current?.getCurrentTime((position) => {
+      MusicHandler.sound?.getCurrentTime((position) => {
         setCurrentPosition(position);
       });
     }, 1000);
@@ -167,32 +77,12 @@ export default function App() {
   }, [currentTrack]);
 
   const handleFinished = () => {
-    const nextTrackIndex = (currentTrack + 1) % tracks.length;
-    setCurrentTrack(nextTrackIndex);
+    const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
+    MusicHandler.loadTrack(nextTrackIndex);
   };
 
   const togglePlayPause = async () => {
-    const track = tracks[currentTrack];
-    if (track) {
-      sound.current?.getCurrentTime((position) => {
-        MediaControls.updateMetadata({
-          title: track.title,
-          artist: track.artist,
-          album: track.album,
-          duration: sound.current?.getDuration() ?? 0,
-          position,
-          isPlaying: !isPlaying,
-          artwork: track.artwork,
-        }).catch(console.error);
-      });
-    }
-    if (isPlaying) {
-      setIsPlaying(false);
-      sound.current?.pause();
-    } else {
-      setIsPlaying(true);
-      sound.current?.play(handleFinished);
-    }
+    MusicHandler.setPlaying(!isPlaying, handleFinished);
   };
 
   const stopPlayback = async () => {
@@ -200,21 +90,21 @@ export default function App() {
       setIsPlaying(false);
       setCurrentPosition(0);
       await MediaControls.stopMediaNotification();
-      sound.current?.stop();
+      MusicHandler.sound?.stop();
     } catch (error) {
       console.error('Error while stopping: ', error);
     }
   };
 
   const nextTrack = () => {
-    const nextTrackIndex = (currentTrack + 1) % tracks.length;
-    handleSetCurrentTrack(nextTrackIndex);
+    const nextTrackIndex = (currentTrack + 1) % MusicHandler.tracks.length;
+    MusicHandler.loadTrack(nextTrackIndex);
   };
 
   const prevTrack = () => {
     const prevTrackIndex =
-      currentTrack === 0 ? tracks.length - 1 : currentTrack - 1;
-    handleSetCurrentTrack(prevTrackIndex);
+      currentTrack === 0 ? MusicHandler.tracks.length - 1 : currentTrack - 1;
+    MusicHandler.loadTrack(prevTrackIndex);
   };
 
   const formatTime = (s: number) => {
@@ -223,7 +113,7 @@ export default function App() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const track = tracks[currentTrack];
+  const track = MusicHandler.tracks[currentTrack];
 
   return (
     <View style={styles.container}>
@@ -248,7 +138,7 @@ export default function App() {
         <Button title="⏮️ Prev" onPress={prevTrack} />
         <Button
           title={isPlaying ? '⏸️ Pause' : '▶️ Play'}
-          onPress={togglePlayPause}
+          onPress={() => togglePlayPause()}
         />
         <Button title="⏭️ Next" onPress={nextTrack} />
       </View>
