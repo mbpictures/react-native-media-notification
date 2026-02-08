@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
   install_modules_dependencies(s)
 
   # iOS frameworks
-  s.frameworks = 'MediaPlayer', 'AVFoundation'
+  s.frameworks = 'MediaPlayer', 'AVFoundation', 'CarPlay'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES'
