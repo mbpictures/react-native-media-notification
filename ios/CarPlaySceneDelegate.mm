@@ -14,26 +14,30 @@ API_AVAILABLE(ios(14.0))
 API_AVAILABLE(ios(14.0))
 @implementation CarPlaySceneDelegate
 
-#pragma mark - CPTemplateApplicationSceneDelegate
+static CarPlaySceneDelegate *_sharedInstance = nil;
 
-- (void)templateApplicationScene:(CPTemplateApplicationScene *)templateApplicationScene
-   didConnectInterfaceController:(CPInterfaceController *)interfaceController {
-    self.interfaceController = interfaceController;
+#pragma mark - Public API
 
-    [self buildAndSetRootTemplate];
++ (void)connectWithInterfaceController:(CPInterfaceController *)interfaceController {
+    _sharedInstance = [[CarPlaySceneDelegate alloc] init];
+    _sharedInstance.interfaceController = interfaceController;
 
-    [[NSNotificationCenter defaultCenter] addObserver:self
+    [_sharedInstance buildAndSetRootTemplate];
+
+    [[NSNotificationCenter defaultCenter] addObserver:_sharedInstance
                                              selector:@selector(onLibraryUpdated:)
                                                  name:MediaLibraryUpdatedNotification
                                                object:nil];
 }
 
-- (void)templateApplicationScene:(CPTemplateApplicationScene *)templateApplicationScene
-didDisconnectInterfaceController:(CPInterfaceController *)interfaceController {
-    self.interfaceController = nil;
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:MediaLibraryUpdatedNotification
-                                                  object:nil];
++ (void)disconnect {
+    if (_sharedInstance) {
+        [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
+                                                        name:MediaLibraryUpdatedNotification
+                                                      object:nil];
+        _sharedInstance.interfaceController = nil;
+        _sharedInstance = nil;
+    }
 }
 
 #pragma mark - Library Update
@@ -60,12 +64,6 @@ didDisconnectInterfaceController:(CPInterfaceController *)interfaceController {
         CPListTemplate *listTemplate = [self buildListTemplateForElement:tabElement];
         [tabs addObject:listTemplate];
     }
-
-    // Add Now Playing as the last tab
-    CPNowPlayingTemplate *nowPlaying = [CPNowPlayingTemplate sharedTemplate];
-    nowPlaying.tabTitle = @"Now Playing";
-    nowPlaying.tabImage = [UIImage systemImageNamed:@"play.circle"];
-    [tabs addObject:nowPlaying];
 
     CPTabBarTemplate *tabBar = [[CPTabBarTemplate alloc] initWithTemplates:tabs];
 
