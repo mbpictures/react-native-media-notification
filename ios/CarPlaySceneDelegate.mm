@@ -95,6 +95,9 @@ static CarPlaySceneDelegate *_sharedInstance = nil;
                 [[NSNotificationCenter defaultCenter] postNotificationName:CarPlayItemSelectedNotification
                                                                     object:nil
                                                                   userInfo:@{@"mediaItems": @[childId ?: @""]}];
+                // Show the Now Playing screen
+                CPNowPlayingTemplate *nowPlaying = [CPNowPlayingTemplate sharedTemplate];
+                [strongSelf.interfaceController pushTemplate:nowPlaying animated:YES completion:nil];
             } else if (childBrowsable) {
                 MediaElement *childElement = [[MediaLibraryStore sharedInstance] findElementById:childId];
                 if (childElement && childElement.items.count > 0) {
