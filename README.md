@@ -24,6 +24,7 @@
 - 🔊 Audio Interruption Handling
 - 📱 iOS Control Center Integration
 - 🤖 Android Media3 Session Support
+- 🚗 Android Auto integration
 - 🎯 TypeScript Support
 - ⚡ New Architecture (Turbo Modules) Ready
 
