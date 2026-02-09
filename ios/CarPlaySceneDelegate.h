@@ -3,6 +3,9 @@
 #import <CarPlay/CarPlay.h>
 
 API_AVAILABLE(ios(14.0))
-@interface CarPlaySceneDelegate : UIResponder <CPTemplateApplicationSceneDelegate>
+@interface CarPlaySceneDelegate : NSObject
+
++ (void)connectWithInterfaceController:(CPInterfaceController *)interfaceController;
++ (void)disconnect;
 
 @end

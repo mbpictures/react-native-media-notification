@@ -14,7 +14,8 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/mbpictures/react-native-media-notification.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
-  s.private_header_files = "ios/**/*.h"
+  s.public_header_files = "ios/CarPlaySceneDelegate.h"
+  s.private_header_files = "ios/MediaControls.h", "ios/MediaElement.h", "ios/MediaLibraryStore.h"
 
 
   install_modules_dependencies(s)
