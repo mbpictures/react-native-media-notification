@@ -57,11 +57,30 @@ Add the `audio` background mode to your `Info.plist`:
 
 #### CarPlay
 
-To enable Apple CarPlay support, the following additional configuration is required:
+To enable Apple CarPlay support, your app must adopt the **UIScene lifecycle** with separate scene delegates for the phone display and CarPlay. The following steps are required:
 
-1. **Entitlement**: Your app must have the `com.apple.developer.carplay-audio` entitlement. Request this from Apple via the [CarPlay entitlement request form](https://developer.apple.com/contact/carplay/).
+##### 1. Entitlement
 
-2. **Scene Configuration**: Add the CarPlay scene to your `Info.plist`:
+Your app must have the `com.apple.developer.carplay-audio` entitlement. Request this from Apple via the [CarPlay entitlement request form](https://developer.apple.com/contact/carplay/).
+
+Create (or update) your entitlements file (e.g. `YourApp.entitlements`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.developer.carplay-audio</key>
+    <true/>
+</dict>
+</plist>
+```
+
+Make sure it is referenced in your Xcode build settings under **Code Signing Entitlements**.
+
+##### 2. Info.plist Scene Configuration
+
+Add the `UIApplicationSceneManifest` to your `Info.plist` with both a phone and CarPlay scene:
 
 ```xml
 <key>UIApplicationSceneManifest</key>
@@ -70,19 +89,6 @@ To enable Apple CarPlay support, the following additional configuration is requi
     <true/>
     <key>UISceneConfigurations</key>
     <dict>
-        <!-- Your existing phone scene configuration -->
-        <key>UIWindowSceneSessionRoleApplication</key>
-        <array>
-            <dict>
-                <key>UISceneConfigurationName</key>
-                <string>Default Configuration</string>
-                <key>UISceneDelegateClassName</key>
-                <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-                <key>UISceneStoryboardFile</key>
-                <string>Main</string>
-            </dict>
-        </array>
-        <!-- CarPlay scene configuration -->
         <key>CPTemplateApplicationSceneSessionRoleApplication</key>
         <array>
             <dict>
@@ -91,14 +97,100 @@ To enable Apple CarPlay support, the following additional configuration is requi
                 <key>UISceneConfigurationName</key>
                 <string>CarPlay</string>
                 <key>UISceneDelegateClassName</key>
-                <string>CarPlaySceneDelegate</string>
+                <string>$(PRODUCT_MODULE_NAME).CarSceneDelegate</string>
+            </dict>
+        </array>
+        <key>UIWindowSceneSessionRoleApplication</key>
+        <array>
+            <dict>
+                <key>UISceneClassName</key>
+                <string>UIWindowScene</string>
+                <key>UISceneConfigurationName</key>
+                <string>Phone</string>
+                <key>UISceneDelegateClassName</key>
+                <string>$(PRODUCT_MODULE_NAME).PhoneSceneDelegate</string>
             </dict>
         </array>
     </dict>
 </dict>
 ```
 
-> **Note**: If your app does not already use scenes (i.e., it uses the older `AppDelegate`-based lifecycle), you may need to also add a `UIWindowSceneSessionRoleApplication` entry for the main app window. For a standard React Native app, you typically only need to add the `CPTemplateApplicationSceneSessionRoleApplication` section alongside your existing configuration.
+##### 3. AppDelegate Scene Routing
+
+Add the `application(_:configurationForConnecting:options:)` method to your `AppDelegate` to route each scene session to the correct delegate:
+
+```swift
+func application(
+  _ application: UIApplication,
+  configurationForConnecting connectingSceneSession: UISceneSession,
+  options: UIScene.ConnectionOptions
+) -> UISceneConfiguration {
+  if connectingSceneSession.role == UISceneSession.Role.carTemplateApplication {
+    let scene = UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
+    scene.delegateClass = CarSceneDelegate.self
+    return scene
+  } else {
+    let scene = UISceneConfiguration(name: "Phone", sessionRole: connectingSceneSession.role)
+    scene.delegateClass = PhoneSceneDelegate.self
+    return scene
+  }
+}
+```
+
+##### 4. PhoneSceneDelegate
+
+Create a `PhoneSceneDelegate.swift` that manages the phone window. With the scene lifecycle, window creation moves from the `AppDelegate` into this scene delegate:
+
+```swift
+import Foundation
+import UIKit
+
+class PhoneSceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+    if session.role != .windowApplication {
+      return
+    }
+
+    guard let appDelegate = (UIApplication.shared.delegate as? AppDelegate) else { return }
+    guard let windowScene = (scene as? UIWindowScene) else { return }
+
+    let window = UIWindow(windowScene: windowScene)
+    window.rootViewController = appDelegate.window?.rootViewController
+    self.window = window
+    window.makeKeyAndVisible()
+  }
+}
+```
+
+> **Important**: Do not create a new `UIViewController` and assign the React Native root view to it. The root view is already associated with a view controller by `RCTReactNativeFactory`. Reuse the existing `rootViewController` from the AppDelegate's window to avoid a `UIViewControllerHierarchyInconsistency` crash.
+
+##### 5. CarSceneDelegate
+
+Create a `CarSceneDelegate.swift` that bridges to the library's `CarPlaySceneDelegate`:
+
+```swift
+import Foundation
+import CarPlay
+import MediaControls
+
+class CarSceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
+  func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didConnect interfaceController: CPInterfaceController) {
+    CarPlaySceneDelegate.connect(with: interfaceController)
+  }
+
+  func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+    CarPlaySceneDelegate.disconnect()
+  }
+}
+```
+
+##### 6. Add Files to Xcode
+
+Make sure both `PhoneSceneDelegate.swift` and `CarSceneDelegate.swift` are added to your Xcode project (right click, "Add Files", and choose "Reference to file" in the dropdown).
 
 ### Android
 
