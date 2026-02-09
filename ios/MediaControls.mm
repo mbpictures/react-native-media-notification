@@ -59,11 +59,15 @@ RCT_EXPORT_METHOD(setControlEnabled:(NSString*)name enabled:(BOOL)enabled) {
   if ([name  isEqual: @"play"]) {
     [commandCenter.playCommand addTarget:self action:@selector(handlePlayCommand:)];
     commandCenter.playCommand.enabled = enabled;
+    [commandCenter.togglePlayPauseCommand addTarget:self action:@selector(handleTogglePlayPauseCommand:)];
+    commandCenter.togglePlayPauseCommand.enabled = enabled;
   }
 
   if ([name  isEqual: @"pause"]) {
     [commandCenter.pauseCommand addTarget:self action:@selector(handlePauseCommand:)];
     commandCenter.pauseCommand.enabled = enabled;
+    [commandCenter.togglePlayPauseCommand addTarget:self action:@selector(handleTogglePlayPauseCommand:)];
+    commandCenter.togglePlayPauseCommand.enabled = enabled;
   }
 
   if ([name  isEqual: @"stop"]) {
@@ -127,11 +131,11 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
             double position = metadata.position().value();
             nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = [NSNumber numberWithDouble:position];
         }
-      
+
         if (metadata.isPlaying().has_value()) {
             nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying().value() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
         }
-        
+
 
         _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
 
@@ -233,31 +237,34 @@ RCT_EXPORT_METHOD(shutdown) {
     _audioInterruptionEnabled = false;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayItemSelectedNotification object:nil];
-  
-  
+
+
     MPRemoteCommandCenter *remoteCenter = [MPRemoteCommandCenter sharedCommandCenter];
-  
+
     [remoteCenter.playCommand removeTarget:self action:@selector(handlePlayCommand:)];
     remoteCenter.playCommand.enabled = false;
-  
+
     [remoteCenter.pauseCommand removeTarget:self action:@selector(handlePauseCommand:)];
     remoteCenter.pauseCommand.enabled = false;
-    
+
+    [remoteCenter.togglePlayPauseCommand removeTarget:self action:@selector(handleTogglePlayPauseCommand:)];
+    remoteCenter.togglePlayPauseCommand.enabled = false;
+
     [remoteCenter.stopCommand removeTarget:self action:@selector(handleStopCommand:)];
     remoteCenter.stopCommand.enabled = false;
-    
+
     [remoteCenter.nextTrackCommand removeTarget:self action:@selector(handleNextTrackCommand:)];
     remoteCenter.nextTrackCommand.enabled = false;
-    
+
     [remoteCenter.previousTrackCommand removeTarget:self action:@selector(handlePreviousTrackCommand:)];
     remoteCenter.previousTrackCommand.enabled = false;
-    
+
     [remoteCenter.seekForwardCommand removeTarget:self action:@selector(handleSeekForwardCommand:)];
     remoteCenter.seekForwardCommand.enabled = false;
-    
+
     [remoteCenter.seekBackwardCommand removeTarget:self action:@selector(handleSeekBackwardCommand:)];
     remoteCenter.seekBackwardCommand.enabled = false;
-    
+
     [remoteCenter.changePlaybackPositionCommand removeTarget:self action:@selector(handleChangePlaybackPositionCommand:)];
     remoteCenter.changePlaybackPositionCommand.enabled = false;
 }
@@ -303,6 +310,16 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
     return MPRemoteCommandHandlerStatusSuccess;
 }
 
+- (MPRemoteCommandHandlerStatus)handleTogglePlayPauseCommand:(MPRemoteCommandEvent *)event {
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    if (center.playbackState == MPNowPlayingPlaybackStatePlaying) {
+        [self emitEvent:@"pause" position:nil];
+    } else {
+        [self emitEvent:@"play" position:nil];
+    }
+    return MPRemoteCommandHandlerStatusSuccess;
+}
+
 - (MPRemoteCommandHandlerStatus)handleStopCommand:(MPRemoteCommandEvent *)event {
     [self emitEvent:@"stop" position:nil];
     return MPRemoteCommandHandlerStatusSuccess;
@@ -338,7 +355,7 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
 - (MPRemoteCommandHandlerStatus)handleSeekBackwardCommand:(MPRemoteCommandEvent *)event {
     self.isSeeking = true;
     self.isBackwardSeeking = true;
-  
+
     MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
     self.seekTime = [[center.nowPlayingInfo objectForKey:MPNowPlayingInfoPropertyElapsedPlaybackTime] floatValue];
     self.seekTimer = [NSTimer scheduledTimerWithTimeInterval:0.2  target:self selector:@selector(seekTimerCallback) userInfo:nil repeats:YES];
