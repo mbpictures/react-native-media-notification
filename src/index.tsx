@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import type { ImageSourcePropType } from 'react-native/Libraries/Image/Image';
 
-export interface MediaTrackMetadata
-  extends Omit<NativeMediaTrackMetadata, 'artwork'> {
+export interface MediaTrackMetadata extends Omit<
+  NativeMediaTrackMetadata,
+  'artwork'
+> {
   artwork?: string | ImageSourcePropType;
 }
 
@@ -27,8 +29,10 @@ export type MediaItemMediaType =
   | 'genre'
   | 'playlist';
 
-export interface LibraryItem
-  extends Omit<NativeLibraryItem, 'mediaType' | 'items'> {
+export interface LibraryItem extends Omit<
+  NativeLibraryItem,
+  'mediaType' | 'items'
+> {
   items?: LibraryItem[];
   mediaItem?: MediaItemMediaType;
 }
