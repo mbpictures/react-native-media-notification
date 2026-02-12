@@ -14,5 +14,6 @@
 @property (nonatomic, strong, nullable) NSArray<MediaElement *> *items;
 
 + (nullable instancetype)fromDictionary:(NSDictionary *)dict;
+- (NSDictionary *)toDictionary;
 
 @end

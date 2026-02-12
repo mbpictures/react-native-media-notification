@@ -42,4 +42,27 @@
     return element;
 }
 
+- (NSDictionary *)toDictionary {
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    dict[@"id"] = self.itemId;
+    if (self.title) dict[@"title"] = self.title;
+    if (self.artist) dict[@"artist"] = self.artist;
+    if (self.album) dict[@"album"] = self.album;
+    if (self.artwork) dict[@"artwork"] = self.artwork;
+    if (self.mediaType) dict[@"mediaType"] = self.mediaType;
+    if (self.duration) dict[@"duration"] = self.duration;
+    dict[@"playable"] = @(self.playable);
+    dict[@"browsable"] = @(self.browsable);
+
+    if (self.items) {
+        NSMutableArray *children = [NSMutableArray array];
+        for (MediaElement *child in self.items) {
+            [children addObject:[child toDictionary]];
+        }
+        dict[@"items"] = children;
+    }
+
+    return dict;
+}
+
 @end
