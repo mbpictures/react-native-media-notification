@@ -18,10 +18,12 @@ NSString *const CarPlayItemSelectedNotification = @"CarPlayItemSelected";
 }
 
 - (void)setLibrary:(MediaElement *)root {
-    self.rootElement = root;
-    [self persistLibrary];
-    [[NSNotificationCenter defaultCenter] postNotificationName:MediaLibraryUpdatedNotification
-                                                        object:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.rootElement = root;
+        [self persistLibrary];
+        [[NSNotificationCenter defaultCenter] postNotificationName:MediaLibraryUpdatedNotification
+                                                            object:nil];
+    });
 }
 
 - (void)persistLibrary {
