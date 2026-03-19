@@ -132,6 +132,16 @@ class MediaControlsService : MediaLibraryService() {
         notificationManager.createNotificationChannel(channel)
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Guard against NPE when media button events arrive after player/session is released
+        // or before they are initialized. The super implementation calls
+        // MediaSessionImpl.applyMediaButtonKeyEvent which does checkNotNull(player).
+        if (mediaSession == null || player == null) {
+            return Service.START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
