@@ -199,7 +199,7 @@ class MediaControlsService : MediaLibraryService() {
             controllerInfo: MediaSession.ControllerInfo,
             intent: Intent
         ): Boolean {
-            if (controllerInfo.packageName == "com.android.bluetooth" && intent.action == Intent.ACTION_MEDIA_BUTTON) {
+            if (intent.action == Intent.ACTION_MEDIA_BUTTON) {
                 val keyEvent = intent.parcelable<android.view.KeyEvent>(Intent.EXTRA_KEY_EVENT)
                 if (keyEvent != null && keyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
                     when (keyEvent.keyCode) {
