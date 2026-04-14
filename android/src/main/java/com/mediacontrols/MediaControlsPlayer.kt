@@ -109,10 +109,10 @@ class MediaControlsPlayer(
 
         // Handle different seek commands
         when (seekCommand) {
-            Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+            Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                 sendEvent(Controls.NEXT, null)
             }
-            Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
                 sendEvent(Controls.PREVIOUS, null)
             }
             Player.COMMAND_SEEK_FORWARD -> {
@@ -261,7 +261,9 @@ class MediaControlsPlayer(
         val availableCommands = mutableSetOf<Int>().apply {
             add(Player.COMMAND_PLAY_PAUSE)
             add(Player.COMMAND_STOP)
+            add(Player.COMMAND_SEEK_TO_NEXT)
             add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            add(Player.COMMAND_SEEK_TO_PREVIOUS)
             add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
             add(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
             add(Player.COMMAND_SEEK_FORWARD)
