@@ -31,6 +31,7 @@ class MediaControlsService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private val binder = LocalBinder()
     private var mediaController: MediaController? = null
+    private var notificationProvider: MediaNotificationProvider? = null
 
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
@@ -80,7 +81,8 @@ class MediaControlsService : MediaLibraryService() {
             }
         })
 
-        setMediaNotificationProvider(MediaNotificationProvider(this))
+        notificationProvider = MediaNotificationProvider(this)
+        setMediaNotificationProvider(notificationProvider!!)
 
         // Create MediaController for media controls
         setupMediaController()
@@ -158,13 +160,32 @@ class MediaControlsService : MediaLibraryService() {
 
     fun stopNotificationAndService() {
         player?.sendEvent(Controls.STOP, null)
-        stopForeground(Service.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+
+        player?.runCatching {
+            stop()
+            clearMediaItems()
+        }
+
+        mediaController?.runCatching { release() }
+        mediaController = null
+
+        mediaSession?.runCatching { release() }
+        mediaSession = null
+
         player?.releaseFocus()
-        mediaSession?.runCatching {
+        player?.runCatching {
+            cleanup()
             release()
         }
-        mediaSession = null
+        player = null
+
+        stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        notificationProvider?.lastNotificationId?.let { id ->
+            getSystemService(NotificationManager::class.java)?.cancel(id)
+        }
+        notificationProvider = null
+
+        stopSelf()
     }
 
     fun getPlayer(): MediaControlsPlayer? = player

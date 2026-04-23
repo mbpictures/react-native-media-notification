@@ -14,6 +14,9 @@ import com.google.common.collect.ImmutableList
 
 @UnstableApi
 class MediaNotificationProvider(private val context: Context) : MediaNotification.Provider {
+    @Volatile
+    var lastNotificationId: Int? = null
+        private set
 
     override fun createNotification(
         mediaSession: MediaSession,
@@ -41,6 +44,7 @@ class MediaNotificationProvider(private val context: Context) : MediaNotificatio
             }
         }
 
+        lastNotificationId = notification.notificationId
         return MediaNotification(notification.notificationId, modifiedNotification)
     }
 
