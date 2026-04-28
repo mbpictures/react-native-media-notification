@@ -36,6 +36,8 @@ class MediaControlsService : MediaLibraryService() {
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
         var player: MediaControlsPlayer? = null
+        val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
+        var instance: MediaControlsService? = null
     }
 
     inner class LocalBinder : Binder() {
@@ -54,6 +56,8 @@ class MediaControlsService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        instance = this
 
         if (player == null) {
             player = MediaControlsPlayer(this)
@@ -97,8 +101,8 @@ class MediaControlsService : MediaLibraryService() {
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
     }
 
-    private fun updateCustomLayout() {
-        mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+    fun updateCustomLayout() {
+        mediaSession?.setMediaButtonPreferences(player?.getAvailableCustomCommands()?.toList() ?: emptyList())
     }
 
     private fun setupMediaController() {
@@ -184,6 +188,9 @@ class MediaControlsService : MediaLibraryService() {
             getSystemService(NotificationManager::class.java)?.cancel(id)
         }
         notificationProvider = null
+        if (instance === this) {
+            instance = null
+        }
 
         stopSelf()
     }

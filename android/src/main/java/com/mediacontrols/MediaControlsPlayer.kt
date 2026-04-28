@@ -43,7 +43,8 @@ class MediaControlsPlayer(
     private var audioFocusListener = AudioFocusListener(context, this)
 
     // Control states
-    private val enabledControls = mutableMapOf<Controls, Boolean>()
+    private val enabledControls: MutableMap<Controls, Boolean>
+        get() = MediaControlsService.persistedEnabledControls
 
     override fun getState(): State = currentState
 

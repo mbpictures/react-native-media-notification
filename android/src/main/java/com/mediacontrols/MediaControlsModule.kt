@@ -51,6 +51,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   override fun setControlEnabled(name: String, enabled: Boolean) {
     val control = Controls.fromString(name) ?: throw IllegalArgumentException("Invalid control name: $name")
     MediaControlsService.player?.setControlEnabled(control, enabled)
+    MediaControlsService.instance?.updateCustomLayout()
   }
 
   @ReactMethod
