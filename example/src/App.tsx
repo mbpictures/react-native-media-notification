@@ -44,6 +44,16 @@ export default function App() {
         },
       ],
     });
+    MediaControls.setCustomButtons([
+      {
+        eventId: 'like',
+        icon: 'react_icon',
+        displayName: 'Like',
+      },
+    ]);
+    const likeSub = MediaControls.addEventListener('like', () => {
+      console.log('Like button pressed from Android Auto overflow menu');
+    });
     const playingSub = MusicHandler.emitter.addListener(
       'playing',
       setIsPlaying
@@ -59,6 +69,7 @@ export default function App() {
 
     return () => {
       MediaControls.shutdown();
+      likeSub.remove();
       playingSub.remove();
       durationSub.remove();
       trackChangedSub.remove();

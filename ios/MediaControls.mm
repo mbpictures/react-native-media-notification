@@ -220,6 +220,10 @@ RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::NativeLibraryItem &)
     [[MediaLibraryStore sharedInstance] setLibrary:root];
 }
 
+RCT_EXPORT_METHOD(setCustomButtons:(NSArray *)buttons) {
+    //TODO: implement for iOS (CarPlay overflow / Now Playing buttons)
+}
+
 RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     @try {

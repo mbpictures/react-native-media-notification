@@ -18,6 +18,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionCommands
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
@@ -36,6 +37,8 @@ class MediaControlsService : MediaLibraryService() {
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
         var player: MediaControlsPlayer? = null
+        val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
+        var instance: MediaControlsService? = null
     }
 
     inner class LocalBinder : Binder() {
@@ -54,6 +57,8 @@ class MediaControlsService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        instance = this
 
         if (player == null) {
             player = MediaControlsPlayer(this)
@@ -97,8 +102,26 @@ class MediaControlsService : MediaLibraryService() {
         android.util.Log.d("MediaControlsService", "Service created with new player instance")
     }
 
-    private fun updateCustomLayout() {
-        mediaSession?.setMediaButtonPreferences(player!!.getAvailableCustomCommands().toList())
+    fun updateCustomLayout() {
+        mediaSession?.setMediaButtonPreferences(player?.getAvailableCustomCommands()?.toList() ?: emptyList())
+    }
+
+    fun refreshAvailableCommands() {
+        val session = mediaSession ?: return
+        val sessionCommands = buildSessionCommands()
+        val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+        for (controller in session.connectedControllers) {
+            session.setAvailableCommands(controller, sessionCommands, playerCommands)
+        }
+    }
+
+    private fun buildSessionCommands(): SessionCommands {
+        val commands = mutableListOf<SessionCommand>()
+        commands += CustomCommandButton.entries.map { it.commandButton.sessionCommand!! }
+        player?.getCustomButtons()?.forEach { commands += it.toSessionCommand() }
+        return MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+            .addSessionCommands(commands)
+            .build()
     }
 
     private fun setupMediaController() {
@@ -184,6 +207,9 @@ class MediaControlsService : MediaLibraryService() {
             getSystemService(NotificationManager::class.java)?.cancel(id)
         }
         notificationProvider = null
+        if (instance === this) {
+            instance = null
+        }
 
         stopSelf()
     }
@@ -197,9 +223,7 @@ class MediaControlsService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
             // Accept all connections and provide full access to player commands
-            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .addSessionCommands(CustomCommandButton.entries.map { c -> c.commandButton.sessionCommand!! })
-                .build()
+            val sessionCommands = buildSessionCommands()
 
             val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                 .build()
@@ -280,7 +304,16 @@ class MediaControlsService : MediaLibraryService() {
                     player?.emitRepeatClicked()
                     Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
-                else -> Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))
+                else -> {
+                    val spec = player?.findCustomButton(customCommand.customAction)
+                    if (spec != null) {
+                        MediaControlsModule.Instance?.sendCustomEvent(spec.eventId, null)
+                            ?: EventEmitter.sendEvent(this@MediaControlsService, spec.eventId, null)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    } else {
+                        Futures.immediateFuture(SessionResult(SessionError.ERROR_UNKNOWN))
+                    }
+                }
             }
         }
 

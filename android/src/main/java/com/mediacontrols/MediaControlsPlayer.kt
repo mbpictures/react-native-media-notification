@@ -43,7 +43,11 @@ class MediaControlsPlayer(
     private var audioFocusListener = AudioFocusListener(context, this)
 
     // Control states
-    private val enabledControls = mutableMapOf<Controls, Boolean>()
+    private val enabledControls: MutableMap<Controls, Boolean>
+        get() = MediaControlsService.persistedEnabledControls
+
+    // User-defined buttons (rendered in the overflow / Android Auto burger menu)
+    private var customButtons: List<CustomButtonSpec> = emptyList()
 
     override fun getState(): State = currentState
 
@@ -300,8 +304,21 @@ class MediaControlsPlayer(
                     REPEAT_MODE_ALL -> add(CustomCommandButton.REPEAT_ALL.commandButton)
                 }
             }
+
+            customButtons.forEach { spec ->
+                spec.toCommandButton(context)?.let { add(it) }
+            }
         }
     }
+
+    fun setCustomButtons(buttons: List<CustomButtonSpec>) {
+        customButtons = buttons
+    }
+
+    fun getCustomButtons(): List<CustomButtonSpec> = customButtons
+
+    fun findCustomButton(actionId: String): CustomButtonSpec? =
+        customButtons.firstOrNull { it.actionId == actionId }
 
     fun isControlEnabled(controlName: Controls): Boolean {
         return enabledControls[controlName] ?: false
