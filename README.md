@@ -307,6 +307,53 @@ MediaControls.addEventListener('unduck', () => {}); // restore volume after inte
 await MediaControls.stopMediaNotification();
 ```
 
+### Custom Buttons (Android Auto burger menu)
+
+Register additional buttons that appear in the Android Auto overflow ("burger") menu.
+When pressed, an event with `command === button.eventId` is emitted, so you can listen
+for it through `addEventListener` (or your foreground/background event handler).
+
+```typescript
+MediaControls.setCustomButtons([
+  { eventId: 'like',    icon: 'ic_thumb_up',   displayName: 'Like' },
+  { eventId: 'dislike', icon: 'ic_thumb_down', displayName: 'Dislike' },
+]);
+
+const sub = MediaControls.addEventListener('like', () => {
+  console.log('Like pressed from Android Auto');
+});
+
+// Pass an empty array to clear previously registered buttons:
+// MediaControls.setCustomButtons([]);
+```
+
+#### Configuring icons (Android)
+
+`icon` is the **name of an Android drawable** that exists in your app. Place the icon
+under `android/app/src/main/res/drawable*/` (e.g. as a vector or PNG):
+
+```
+android/app/src/main/res/
+├── drawable/ic_thumb_up.xml         # vector drawable
+├── drawable-mdpi/ic_thumb_down.png  # or rasterized variants
+├── drawable-hdpi/ic_thumb_down.png
+└── ...
+```
+
+Then reference it by name (without extension or `@drawable/` prefix):
+
+```typescript
+{ eventId: 'like', icon: 'ic_thumb_up', displayName: 'Like' }
+```
+
+Recommendations:
+- Use a **white, monochrome vector drawable** sized 24dp × 24dp — Android Auto tints
+  the icon to match its theme.
+- If the drawable cannot be resolved at runtime the button is silently skipped, so
+  double-check the resource name.
+
+> **iOS:** `setCustomButtons` is currently a no-op on iOS.
+
 ## Planned
 - Full Android Auto Support (Headless Tasks, Voice Commands, Media Library)
 - Add more actions/metadata information and better customization
@@ -334,11 +381,18 @@ Enable or disable audio interruption handling. When enabled, the media controls 
 
 **iOS ONLY**. Enable or disable background mode for iOS.
 
-#### `addEventListener(event: MediaControlEvent, handler: Function): EventSubscription`
+#### `setCustomButtons(buttons: CustomButton[]): void`
 
-Registers an event listener for a specific media control event. Returns a function to remove the listener.
+**Android only.** Registers extra buttons that appear in the Android Auto overflow
+("burger") menu. Pressing one emits an event with `command === button.eventId` —
+listen for it via `addEventListener(eventId, handler)`. Pass `[]` to clear.
 
-#### `removeAllListeners(event?: MediaControlEvent): void`
+#### `addEventListener(event: MediaControlEvent | string, handler: Function): EventSubscription`
+
+Registers an event listener for a specific media control event. Also accepts any
+`eventId` registered via `setCustomButtons`. Returns a function to remove the listener.
+
+#### `removeAllListeners(event?: MediaControlEvent | string): void`
 
 Removes all event listeners for an specific event or for all events, when no event has been specified.
 
@@ -370,6 +424,15 @@ type MediaControlEvent =
 type MediaControlEventData = {
   position?: number; // for seek events
 };
+
+interface CustomButton {
+  /** Identifier emitted as the event command when this button is pressed. */
+  eventId: string;
+  /** Drawable resource name (Android) used as the button icon. */
+  icon: string;
+  /** Optional label shown next to the icon (e.g. in the Android Auto overflow menu). */
+  displayName?: string;
+}
 ```
 
 ## Platform specific notes
