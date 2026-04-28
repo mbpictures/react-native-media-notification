@@ -14,16 +14,20 @@ import com.facebook.react.bridge.WritableMap
 class EventEmitter {
     companion object {
         fun sendEvent(context: Context, command: Controls, data: WritableMap?) {
+            sendEvent(context, command.code, data)
+        }
+
+        fun sendEvent(context: Context, command: String, data: WritableMap?) {
             if (isAppInForeground(context) && MediaControlsModule.Instance != null) {
                 Log.d("EventEmitter", "App is in foreground, sending event directly to MediaControlsModule")
-                MediaControlsModule.Instance?.sendEvent(command, data)
+                MediaControlsModule.Instance?.sendCustomEvent(command, data)
                 return
             }
 
             try {
                 Log.d("EventEmitter", "App is in background, sending event to headless task")
                 val backgroundIntent = Intent(context, MediaControlsHeadlessTask::class.java)
-                backgroundIntent.putExtra("command", command.code)
+                backgroundIntent.putExtra("command", command)
                 backgroundIntent.putExtra("data", Arguments.toBundle(data))
                 val name: ComponentName? = context.startService(backgroundIntent)
                 if (name != null) {

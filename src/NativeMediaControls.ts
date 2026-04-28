@@ -58,6 +58,12 @@ export interface NativeLibraryItem {
   items?: UnsafeObject[];
 }
 
+export interface NativeCustomButton {
+  eventId: string;
+  icon: string;
+  displayName?: string;
+}
+
 export interface Spec extends TurboModule {
   setControlEnabled(name: string, enabled: boolean): void;
   updateMetadata(metadata: NativeMediaTrackMetadata): Promise<void>;
@@ -72,6 +78,8 @@ export interface Spec extends TurboModule {
   shutdown(): void;
 
   setMediaLibrary(library: NativeLibraryItem): void;
+
+  setCustomButtons(buttons: UnsafeObject[]): void;
 
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;

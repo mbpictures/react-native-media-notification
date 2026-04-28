@@ -11,6 +11,7 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.module.annotations.ReactModule
@@ -113,6 +114,22 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     MediaStore.Instance.build(library)
   }
 
+  override fun setCustomButtons(buttons: ReadableArray?) {
+    val specs = mutableListOf<CustomButtonSpec>()
+    if (buttons != null) {
+      for (i in 0 until buttons.size()) {
+        val map = buttons.getMap(i) ?: continue
+        val eventId = map.getString("eventId") ?: continue
+        val icon = map.getString("icon") ?: continue
+        val displayName = if (map.hasKey("displayName")) map.getString("displayName") else null
+        specs.add(CustomButtonSpec(eventId, icon, displayName))
+      }
+    }
+    MediaControlsService.player?.setCustomButtons(specs)
+    MediaControlsService.instance?.refreshAvailableCommands()
+    MediaControlsService.instance?.updateCustomLayout()
+  }
+
   @ReactMethod
   fun getControlsEnabled(promise: Promise) {
     try {
@@ -170,8 +187,12 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   }
 
   fun sendEvent(eventName: Controls, data: WritableMap?) {
+    sendCustomEvent(eventName.code, data)
+  }
+
+  fun sendCustomEvent(eventId: String, data: WritableMap?) {
     val eventData = Arguments.createMap().apply {
-        putString("command", eventName.code)
+        putString("command", eventId)
         putMap("data", data)
     }
     emitOnEvent(eventData)

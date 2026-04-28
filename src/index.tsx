@@ -2,6 +2,7 @@ import MediaControls, {
   ALL_MEDIA_EVENTS,
   type MediaControl,
   type MediaControlEvent,
+  type NativeCustomButton,
   type NativeLibraryItem,
 } from './NativeMediaControls';
 import type { NativeMediaTrackMetadata } from './NativeMediaControls';
@@ -76,6 +77,26 @@ export function setMediaLibrary(library: LibraryItem) {
   return MediaControls.setMediaLibrary(library);
 }
 
+export interface CustomButton {
+  /** Identifier emitted as the event command when this button is pressed. */
+  eventId: string;
+  /** Drawable resource name (Android) used as the button icon. */
+  icon: string;
+  /** Optional display name shown next to the icon (e.g. in the Android Auto overflow menu). */
+  displayName?: string;
+}
+
+/**
+ * Sets the list of custom buttons. On Android Auto these are placed in the
+ * overflow ("burger") menu. When pressed, an event with `command === button.eventId`
+ * is emitted via `addEventListener` / `foregroundEventHandler`.
+ *
+ * Pass an empty array to clear previously registered buttons.
+ */
+export function setCustomButtons(buttons: CustomButton[]): void {
+  MediaControls.setCustomButtons(buttons as NativeCustomButton[]);
+}
+
 /**
  * Stops the media notification and clears any ongoing playback state.
  */
@@ -111,9 +132,12 @@ export function shutdown(): void {
 
 /**
  * Register an event listener for media control events.
+ *
+ * Accepts the built-in {@link MediaControlEvent} commands as well as any
+ * `eventId` registered via {@link setCustomButtons}.
  */
 export function addEventListener(
-  event: MediaControlEvent,
+  event: MediaControlEvent | (string & {}),
   handler: (data?: MediaControlEventData) => void
 ): EventSubscription {
   setUpNativeEventListener();
@@ -123,7 +147,9 @@ export function addEventListener(
 /**
  * Remove a specific event listener for media control events.
  */
-export function removeAllListeners(event?: MediaControlEvent): void {
+export function removeAllListeners(
+  event?: MediaControlEvent | (string & {})
+): void {
   if (event) {
     eventEmitter.removeAllListeners(event);
   } else {
