@@ -58,6 +58,12 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   override fun updateMetadata(metadata: ReadableMap, promise: Promise) {
     try {
+      // stopMediaNotification() releases and nulls the singleton player. Recreate it
+      // before (re)starting the service so this metadata isn't dropped onto a null
+      // player while the service restarts asynchronously (empty notification on replay).
+      if (MediaControlsService.player == null) {
+        MediaControlsService.player = MediaControlsPlayer(reactApplicationContext)
+      }
       // Start service on first updateMetadata call
       ensureServiceStarted()
 
@@ -171,9 +177,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   }
 
   private fun ensureServiceStarted() {
-    if (!isServiceRunning(MediaControlsService::class.java)) {
-      startMediaService()
-    }
+    startMediaService()
   }
 
   private fun isServiceRunning(serviceClass: Class<*>): Boolean {
@@ -201,7 +205,9 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   private fun startMediaService() {
     val intent = Intent(reactApplicationContext, MediaControlsService::class.java)
     reactApplicationContext.startService(intent)
-    reactApplicationContext.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    if (!serviceBound) {
+      reactApplicationContext.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
   }
 
   private fun stopMediaService() {
