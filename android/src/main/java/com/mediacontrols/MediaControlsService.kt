@@ -3,13 +3,23 @@ package com.mediacontrols
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Binder
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.SystemClock
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -31,11 +41,86 @@ import com.google.common.util.concurrent.ListenableFuture
 class MediaControlsService : MediaLibraryService() {
 
     private var mediaSession: MediaLibrarySession? = null
+
+    @Volatile
+    private var sessionReleased = false
     private val binder = LocalBinder()
     private var mediaController: MediaController? = null
     private var notificationProvider: MediaNotificationProvider? = null
 
+    private var becomingNoisyRegistered = false
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) return
+            pauseForOutputLoss()
+        }
+    }
+
+    private var deviceCallbackRegistered = false
+    private val outputDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+            if (removedDevices == null || !removedDevices.any { isRemoteSink(it) }) return
+            // A handover between two external outputs is not an output loss.
+            if (remoteSinkStillPresent()) return
+            pauseForOutputLoss()
+        }
+    }
+
+    @Suppress("InlinedApi")
+    private fun isRemoteSink(device: AudioDeviceInfo?): Boolean {
+        if (device == null || !device.isSink) return false
+        return when (device.type) {
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_BLE_HEADSET,
+            AudioDeviceInfo.TYPE_BLE_SPEAKER,
+            AudioDeviceInfo.TYPE_BLE_BROADCAST,
+            AudioDeviceInfo.TYPE_HEARING_AID,
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_USB_DEVICE,
+            AudioDeviceInfo.TYPE_USB_HEADSET,
+            AudioDeviceInfo.TYPE_USB_ACCESSORY,
+            AudioDeviceInfo.TYPE_DOCK,
+            AudioDeviceInfo.TYPE_HDMI,
+            AudioDeviceInfo.TYPE_HDMI_ARC,
+            AudioDeviceInfo.TYPE_LINE_ANALOG,
+            AudioDeviceInfo.TYPE_LINE_DIGITAL,
+            AudioDeviceInfo.TYPE_AUX_LINE,
+            AudioDeviceInfo.TYPE_BUS -> true
+            else -> false
+        }
+    }
+
+    private fun remoteSinkStillPresent(): Boolean {
+        val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return true
+        return try {
+            am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { isRemoteSink(it) }
+        } catch (t: Throwable) {
+            true
+        }
+    }
+
+    @Volatile
+    private var lastOutputLossPauseAt = 0L
+
+    private fun pauseForOutputLoss() {
+        val activePlayer = player ?: return
+
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastOutputLossPauseAt < OUTPUT_LOSS_DEBOUNCE_MS) return
+        lastOutputLossPauseAt = now
+
+        Handler(activePlayer.applicationLooper).post {
+            if (activePlayer.playWhenReady) {
+                activePlayer.sendEvent(Controls.PAUSE, null)
+            }
+        }
+    }
+
     companion object {
+        private const val OUTPUT_LOSS_DEBOUNCE_MS = 2000L
+
         private const val CHANNEL_ID = "media_controls_channel"
 
         private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
@@ -81,6 +166,7 @@ class MediaControlsService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, player!!, MediaSessionCallback())
             .setId("MediaControlsSession")
             .build()
+        sessionReleased = false
 
         updateCustomLayout()
 
@@ -99,6 +185,28 @@ class MediaControlsService : MediaLibraryService() {
 
         // Create MediaController for media controls
         setupMediaController()
+
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                becomingNoisyReceiver,
+                IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            becomingNoisyRegistered = true
+        } catch (t: Throwable) {
+            becomingNoisyRegistered = false
+        }
+
+        try {
+            val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            if (am != null) {
+                am.registerAudioDeviceCallback(outputDeviceCallback, Handler(Looper.getMainLooper()))
+                deviceCallbackRegistered = true
+            }
+        } catch (t: Throwable) {
+            deviceCallbackRegistered = false
+        }
 
         MediaStore.init(this)
         MediaStore.Instance.addListener(object: MediaStore.Listener {
@@ -169,14 +277,18 @@ class MediaControlsService : MediaLibraryService() {
         // Guard against NPE when media button events arrive after player/session is released
         // or before they are initialized. The super implementation calls
         // MediaSessionImpl.applyMediaButtonKeyEvent which does checkNotNull(player).
-        if (mediaSession == null || player == null) {
+        // A released-but-not-yet-cleared session must be treated the same way:
+        // super hands it to MediaSessionService.addSession, which asserts on
+        // an already released session.
+        val session = mediaSession
+        if (session == null || sessionReleased || player == null) {
             return Service.START_NOT_STICKY
         }
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        return mediaSession
+        return mediaSession?.takeIf { !sessionReleased }
     }
 
     override fun onDestroy() {
@@ -197,11 +309,28 @@ class MediaControlsService : MediaLibraryService() {
             clearMediaItems()
         }
 
+        if (becomingNoisyRegistered) {
+            try {
+                unregisterReceiver(becomingNoisyReceiver)
+            } catch (ignored: Exception) {}
+            becomingNoisyRegistered = false
+        }
+
+        if (deviceCallbackRegistered) {
+            try {
+                (getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
+                    ?.unregisterAudioDeviceCallback(outputDeviceCallback)
+            } catch (ignored: Exception) {}
+            deviceCallbackRegistered = false
+        }
+
         mediaController?.runCatching { release() }
         mediaController = null
 
-        mediaSession?.runCatching { release() }
+        val sessionToRelease = mediaSession
+        sessionReleased = true
         mediaSession = null
+        sessionToRelease?.runCatching { release() }
 
         player?.releaseFocus()
         player?.runCatching {
