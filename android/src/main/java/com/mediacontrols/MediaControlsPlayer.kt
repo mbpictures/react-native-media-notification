@@ -140,6 +140,7 @@ class MediaControlsPlayer(
         startIndex: Int,
         startPositionMs: Long
     ): ListenableFuture<*> {
+        acknowledgeSelection(mediaItems, startIndex)
         sendEvent(
             Controls.SET_MEDIA_ITEMS,
             Arguments.createMap().apply {
@@ -150,6 +151,28 @@ class MediaControlsPlayer(
             }
         )
         return Futures.immediateFuture(null)
+    }
+
+    private fun acknowledgeSelection(mediaItems: List<MediaItem>, startIndex: Int) {
+        val index = if (startIndex == androidx.media3.common.C.INDEX_UNSET) 0 else startIndex
+        val picked = mediaItems.getOrNull(index) ?: return
+        val mediaId = picked.mediaId
+        if (mediaId.isEmpty() || mediaId == currentMetadata?.id) return
+
+        val known = MediaStore.Instance.getItem(mediaId)?.value?.mediaMetadata
+        val metadata = known ?: picked.mediaMetadata
+
+        updateMetadata(
+            MediaTrackMetadata(
+                id = mediaId,
+                title = metadata.title?.toString(),
+                artist = metadata.artist?.toString(),
+                album = metadata.albumTitle?.toString(),
+                position = 0.0,
+                isPlaying = true,
+                isLoading = true,
+            )
+        )
     }
 
     fun emitShuffleClicked() {
