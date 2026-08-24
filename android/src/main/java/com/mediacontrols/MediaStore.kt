@@ -120,11 +120,46 @@ class MediaStore {
     }
 
     fun search(query: String, page: Int, pageSize: Int): LibraryResult<ImmutableList<MediaItem>>? {
-        if (mediaItemsHierarchy == null) return null
+        if (mediaItemsHierarchy == null) return LibraryResult.ofItemList(emptyList(), null)
         val words = this.buildWordList(query)
 
         val results = searchElements(mediaItemsHierarchy!!, words)
         return LibraryResult.ofItemList(results.paginate(page, pageSize).map { buildMediaItem(it) }, null)
+    }
+
+    fun resolveSearch(query: String): List<MediaItem> {
+        val hierarchy = mediaItemsHierarchy ?: return emptyList()
+        val phrase = query.trim().lowercase()
+        if (phrase.isEmpty()) return emptyList()
+        val words = buildWordList(query)
+
+        val scored = mutableListOf<Pair<Int, MediaElement>>()
+
+        fun visit(element: MediaElement) {
+            if (element.playable == true) {
+                val score = scoreElement(element, phrase, words)
+                if (score > 0) scored.add(Pair(score, element))
+            }
+            element.items?.forEach { visit(it) }
+        }
+        visit(hierarchy)
+
+        return scored
+            .sortedByDescending { it.first }
+            .map { buildMediaItem(it.second) }
+    }
+
+    private fun scoreElement(element: MediaElement, phrase: String, words: List<String>): Int {
+        val title = (element.title ?: "").lowercase()
+        if (title.length > 1) {
+            if (title == phrase) return 1000
+            if (phrase.contains(title)) return 500
+            if (title.contains(phrase)) return 400
+        }
+        val haystack = title + " " +
+            (element.artist ?: "").lowercase() + " " +
+            (element.album ?: "").lowercase()
+        return words.count { haystack.contains(it) }
     }
 
     fun searchCount(query: String): Int {

@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import androidx.annotation.RequiresApi
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -358,6 +359,18 @@ class MediaControlsService : MediaLibraryService() {
             startIndex: Int,
             startPositionMs: Long
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val query = mediaItems.singleOrNull()?.requestMetadata?.searchQuery
+            if (query != null) {
+                val resolved = MediaStore.Instance.resolveSearch(query)
+                if (resolved.isEmpty()) {
+                    return Futures.immediateFailedFuture(
+                        UnsupportedOperationException("nothing in the library matches " + query)
+                    )
+                }
+                return Futures.immediateFuture(
+                    MediaSession.MediaItemsWithStartPosition(resolved, 0, C.TIME_UNSET)
+                )
+            }
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs)
             )
