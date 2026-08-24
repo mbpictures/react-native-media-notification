@@ -19,6 +19,7 @@ class AudioFocusListener(
     private var mFocusRequest: AudioFocusRequest? = null
 
     private var mPlayOnAudioFocus = false
+    private var expectSelfPause = false
     private var ducked = false
 
     private var hasFocus = false
@@ -27,11 +28,17 @@ class AudioFocusListener(
         if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
             abandonAudioFocus()
             mPlayOnAudioFocus = false
-            player.sendEvent(Controls.PAUSE, null)
+            Handler(player.applicationLooper).post {
+                if (player.isPlaying) {
+                    player.sendEvent(Controls.PAUSE, null)
+                }
+            }
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            hasFocus = false
             Handler(player.applicationLooper).post {
                 if (player.isPlaying) {
                     mPlayOnAudioFocus = true
+                    expectSelfPause = true
                     player.sendEvent(Controls.PAUSE, null)
                 }
             }
@@ -46,8 +53,17 @@ class AudioFocusListener(
                 player.sendEvent(Controls.UN_DUCK, null)
             }
             mPlayOnAudioFocus = false
+            expectSelfPause = false
             ducked = false
         }
+    }
+
+    fun cancelPendingResume() {
+        if (expectSelfPause) {
+            expectSelfPause = false
+            return
+        }
+        mPlayOnAudioFocus = false
     }
 
     fun requestAudioFocus() {

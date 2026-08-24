@@ -55,6 +55,9 @@ class MediaControlsPlayer(
         if (playWhenReady && audioInterruptionEnabled) {
             audioFocusListener.requestAudioFocus()
         }
+        if (!playWhenReady) {
+            audioFocusListener.cancelPendingResume()
+        }
 
         updateState { builder ->
             builder
@@ -165,6 +168,10 @@ class MediaControlsPlayer(
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
             audioFocusListener.requestAudioFocus()
         }
+        if (metadata.isPlaying == false) {
+            audioFocusListener.cancelPendingResume()
+        }
+
         val loading = metadata.isLoading == true
 
         this.currentMetadata = this.currentMetadata?.merge(metadata) ?: metadata
@@ -329,9 +336,10 @@ class MediaControlsPlayer(
         if (audioInterruptionEnabled == enabled) return
         audioInterruptionEnabled = enabled
 
-        if (enabled) {
-            audioFocusListener.requestAudioFocus()
-        } else {
+        // Focus is requested lazily when playback starts, in
+        // handleSetPlayWhenReady / updateMetadata. Requesting it here would take
+        // it from whoever holds it while we are still idle.
+        if (!enabled) {
             audioFocusListener.abandonAudioFocus()
         }
     }
