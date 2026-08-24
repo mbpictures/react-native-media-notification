@@ -148,6 +148,10 @@ MediaControls.addEventListener('seek', (data) => {
 // Interruptions
 MediaControls.addEventListener('duck', () => {}); // reduce volume for interruption
 MediaControls.addEventListener('unduck', () => {}); // restore volume after interruption
+
+// Android Auto (Android only)
+MediaControls.addEventListener('carConnected', () => {}); // head unit attached
+MediaControls.addEventListener('carDisconnected', () => {}); // head unit gone
 ```
 
 **Note**: On iOS, seekForward and seekBackward are not fired, even when technically triggered. Instead, a seek event with the corresponding timestamp is fired.
@@ -238,6 +242,13 @@ Enable or disable audio interruption handling. When enabled, the media controls 
 ("burger") menu. Pressing one emits an event with `command === button.eventId` —
 listen for it via `addEventListener(eventId, handler)`. Pass `[]` to clear.
 
+#### `isCarConnected(): boolean`
+
+**Android only** (always `false` on iOS). Whether Android Auto is attached right
+now. Unlike the `carConnected` / `carDisconnected` events, which only report the
+transition, this can be asked at any time, including when the app was launched
+with a car already connected.
+
 #### `addEventListener(event: MediaControlEvent | string, handler: Function): EventSubscription`
 
 Registers an event listener for a specific media control event. Also accepts any
@@ -258,6 +269,7 @@ interface MediaTrackMetadata {
   artwork?: string;     // URL for album artwork
   position?: number;    // current position in seconds
   isPlaying?: boolean;
+  isLoading?: boolean;  // report a buffering state while the track loads
   shuffle?: boolean;    // optional, default is false
   repeat?: 'off' | 'all' | 'one'; // optional, default is
 }
