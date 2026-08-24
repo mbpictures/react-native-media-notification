@@ -35,6 +35,7 @@ export interface NativeMediaTrackMetadata {
   artwork?: string;
   position?: number;
   isPlaying?: boolean;
+  isLoading?: boolean;
   repeatMode?: 'off' | 'one' | 'all';
   shuffle?: boolean;
 }

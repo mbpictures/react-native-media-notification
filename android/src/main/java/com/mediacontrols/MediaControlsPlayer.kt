@@ -165,6 +165,7 @@ class MediaControlsPlayer(
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
             audioFocusListener.requestAudioFocus()
         }
+        val loading = metadata.isLoading == true
 
         this.currentMetadata = this.currentMetadata?.merge(metadata) ?: metadata
 
@@ -208,7 +209,7 @@ class MediaControlsPlayer(
                     this.currentMetadata!!.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(Player.STATE_READY)
+                .setPlaybackState(if (loading) Player.STATE_BUFFERING else Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(this.currentMetadata!!.repeatMode)
                 .setShuffleModeEnabled(this.currentMetadata!!.shuffleMode)
@@ -384,6 +385,7 @@ data class MediaTrackMetadata(
     val artwork: String? = null,
     val position: Double? = null,
     val isPlaying: Boolean? = null,
+    val isLoading: Boolean? = null,
     val repeatMode: String? = null,
     val shuffleMode: Boolean? = null
 ) {
