@@ -98,6 +98,16 @@ export function setCustomButtons(buttons: CustomButton[]): void {
 }
 
 /**
+ * Whether Android Auto is attached right now. Always false on iOS.
+ *
+ * Answers at any moment, including when the app was launched with a car already
+ * connected - the `carConnected` event only covers the transition.
+ */
+export function isCarConnected(): boolean {
+  return MediaControls.isCarConnected();
+}
+
+/**
  * Stops the media notification and clears any ongoing playback state.
  */
 export async function stopMediaNotification(): Promise<void> {

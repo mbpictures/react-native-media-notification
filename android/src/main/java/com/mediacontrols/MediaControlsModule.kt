@@ -1,10 +1,15 @@
 package com.mediacontrols
 
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
 import android.os.IBinder
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.Arguments
@@ -115,6 +120,26 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   override fun shutdown() {
     this.stopMediaService();
     Instance = null
+  }
+
+  @SuppressLint("NewApi")
+  override fun isCarConnected(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      // No route query before API 31, so fall back to the controller list.
+      return MediaControlsService.instance?.isCarConnected() ?: false
+    }
+    val audioManager =
+      reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+    return try {
+      val attributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_MEDIA)
+        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+        .build()
+      audioManager.getAudioDevicesForAttributes(attributes)
+        .any { it.type == AudioDeviceInfo.TYPE_REMOTE_SUBMIX }
+    } catch (t: Throwable) {
+      false
+    }
   }
 
   override fun setMediaLibrary(library: ReadableMap?) {

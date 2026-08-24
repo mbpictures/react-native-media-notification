@@ -36,6 +36,11 @@ class MediaControlsService : MediaLibraryService() {
 
     companion object {
         private const val CHANNEL_ID = "media_controls_channel"
+
+        private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
+
+        const val CAR_CONNECTED_EVENT = "carConnected"
+        const val CAR_DISCONNECTED_EVENT = "carDisconnected"
         var player: MediaControlsPlayer? = null
         val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
         var instance: MediaControlsService? = null
@@ -216,12 +221,25 @@ class MediaControlsService : MediaLibraryService() {
 
     fun getPlayer(): MediaControlsPlayer? = player
 
+    fun isCarConnected(): Boolean {
+        val session = mediaSession ?: return false
+        return try {
+            session.connectedControllers.any { it.packageName == ANDROID_AUTO_PACKAGE }
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
     private inner class MediaSessionCallback : MediaLibrarySession.Callback {
 
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
+            if (controller.packageName == ANDROID_AUTO_PACKAGE) {
+                MediaControlsModule.Instance?.sendCustomEvent(CAR_CONNECTED_EVENT, null)
+            }
+
             // Accept all connections and provide full access to player commands
             val sessionCommands = buildSessionCommands()
 
@@ -232,6 +250,13 @@ class MediaControlsService : MediaLibraryService() {
                 .setAvailableSessionCommands(sessionCommands)
                 .setAvailablePlayerCommands(playerCommands)
                 .build()
+        }
+
+        override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            if (controller.packageName == ANDROID_AUTO_PACKAGE) {
+                MediaControlsModule.Instance?.sendCustomEvent(CAR_DISCONNECTED_EVENT, null)
+            }
+            super.onDisconnected(session, controller)
         }
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
