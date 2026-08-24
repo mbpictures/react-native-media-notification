@@ -224,6 +224,11 @@ RCT_EXPORT_METHOD(setCustomButtons:(NSArray *)buttons) {
     //TODO: implement for iOS (CarPlay overflow / Now Playing buttons)
 }
 
+RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSNumber *, isCarConnected) {
+    // stub only
+    return @NO;
+}
+
 RCT_EXPORT_METHOD(stopMediaNotification:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     @try {

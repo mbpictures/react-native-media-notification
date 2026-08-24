@@ -46,14 +46,14 @@ class MediaControlsPlayer(
     private val enabledControls: MutableMap<Controls, Boolean>
         get() = MediaControlsService.persistedEnabledControls
 
-    // User-defined buttons (rendered in the overflow / Android Auto burger menu)
-    private var customButtons: List<CustomButtonSpec> = emptyList()
-
     override fun getState(): State = currentState
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         if (playWhenReady && audioInterruptionEnabled) {
             audioFocusListener.requestAudioFocus()
+        }
+        if (!playWhenReady) {
+            audioFocusListener.cancelPendingResume()
         }
 
         updateState { builder ->
@@ -140,6 +140,7 @@ class MediaControlsPlayer(
         startIndex: Int,
         startPositionMs: Long
     ): ListenableFuture<*> {
+        acknowledgeSelection(mediaItems, startIndex)
         sendEvent(
             Controls.SET_MEDIA_ITEMS,
             Arguments.createMap().apply {
@@ -150,6 +151,28 @@ class MediaControlsPlayer(
             }
         )
         return Futures.immediateFuture(null)
+    }
+
+    private fun acknowledgeSelection(mediaItems: List<MediaItem>, startIndex: Int) {
+        val index = if (startIndex == androidx.media3.common.C.INDEX_UNSET) 0 else startIndex
+        val picked = mediaItems.getOrNull(index) ?: return
+        val mediaId = picked.mediaId
+        if (mediaId.isEmpty() || mediaId == currentMetadata?.id) return
+
+        val known = MediaStore.Instance.getItem(mediaId)?.value?.mediaMetadata
+        val metadata = known ?: picked.mediaMetadata
+
+        updateMetadata(
+            MediaTrackMetadata(
+                id = mediaId,
+                title = metadata.title?.toString(),
+                artist = metadata.artist?.toString(),
+                album = metadata.albumTitle?.toString(),
+                position = 0.0,
+                isPlaying = true,
+                isLoading = true,
+            )
+        )
     }
 
     fun emitShuffleClicked() {
@@ -165,6 +188,11 @@ class MediaControlsPlayer(
         if (metadata.isPlaying == true && audioInterruptionEnabled) {
             audioFocusListener.requestAudioFocus()
         }
+        if (metadata.isPlaying == false) {
+            audioFocusListener.cancelPendingResume()
+        }
+
+        val loading = metadata.isLoading == true
 
         this.currentMetadata = this.currentMetadata?.merge(metadata) ?: metadata
 
@@ -208,7 +236,7 @@ class MediaControlsPlayer(
                     this.currentMetadata!!.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
-                .setPlaybackState(Player.STATE_READY)
+                .setPlaybackState(if (loading) Player.STATE_BUFFERING else Player.STATE_READY)
                 .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(this.currentMetadata!!.repeatMode)
                 .setShuffleModeEnabled(this.currentMetadata!!.shuffleMode)
@@ -305,20 +333,20 @@ class MediaControlsPlayer(
                 }
             }
 
-            customButtons.forEach { spec ->
+            getCustomButtons().forEach { spec ->
                 spec.toCommandButton(context)?.let { add(it) }
             }
         }
     }
 
     fun setCustomButtons(buttons: List<CustomButtonSpec>) {
-        customButtons = buttons
+        MediaControlsService.persistedCustomButtons = buttons
     }
 
-    fun getCustomButtons(): List<CustomButtonSpec> = customButtons
+    fun getCustomButtons(): List<CustomButtonSpec> = MediaControlsService.persistedCustomButtons
 
     fun findCustomButton(actionId: String): CustomButtonSpec? =
-        customButtons.firstOrNull { it.actionId == actionId }
+        getCustomButtons().firstOrNull { it.actionId == actionId }
 
     fun isControlEnabled(controlName: Controls): Boolean {
         return enabledControls[controlName] ?: false
@@ -328,9 +356,10 @@ class MediaControlsPlayer(
         if (audioInterruptionEnabled == enabled) return
         audioInterruptionEnabled = enabled
 
-        if (enabled) {
-            audioFocusListener.requestAudioFocus()
-        } else {
+        // Focus is requested lazily when playback starts, in
+        // handleSetPlayWhenReady / updateMetadata. Requesting it here would take
+        // it from whoever holds it while we are still idle.
+        if (!enabled) {
             audioFocusListener.abandonAudioFocus()
         }
     }
@@ -384,6 +413,7 @@ data class MediaTrackMetadata(
     val artwork: String? = null,
     val position: Double? = null,
     val isPlaying: Boolean? = null,
+    val isLoading: Boolean? = null,
     val repeatMode: String? = null,
     val shuffleMode: Boolean? = null
 ) {

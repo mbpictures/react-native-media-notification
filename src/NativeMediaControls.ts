@@ -24,7 +24,9 @@ export type MediaControlEvent =
   | MediaControl
   | 'duck'
   | 'unDuck'
-  | 'setMediaItems';
+  | 'setMediaItems'
+  | 'carConnected'
+  | 'carDisconnected';
 
 export interface NativeMediaTrackMetadata {
   id?: string;
@@ -35,6 +37,7 @@ export interface NativeMediaTrackMetadata {
   artwork?: string;
   position?: number;
   isPlaying?: boolean;
+  isLoading?: boolean;
   repeatMode?: 'off' | 'one' | 'all';
   shuffle?: boolean;
 }
@@ -81,6 +84,7 @@ export interface Spec extends TurboModule {
 
   setCustomButtons(buttons: UnsafeObject[]): void;
 
+  isCarConnected(): boolean;
   // Event listeners (native events will be emitted)
   readonly onEvent: EventEmitter<NativeEvent>;
 }
