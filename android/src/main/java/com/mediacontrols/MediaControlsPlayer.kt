@@ -46,9 +46,6 @@ class MediaControlsPlayer(
     private val enabledControls: MutableMap<Controls, Boolean>
         get() = MediaControlsService.persistedEnabledControls
 
-    // User-defined buttons (rendered in the overflow / Android Auto burger menu)
-    private var customButtons: List<CustomButtonSpec> = emptyList()
-
     override fun getState(): State = currentState
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
@@ -313,20 +310,20 @@ class MediaControlsPlayer(
                 }
             }
 
-            customButtons.forEach { spec ->
+            getCustomButtons().forEach { spec ->
                 spec.toCommandButton(context)?.let { add(it) }
             }
         }
     }
 
     fun setCustomButtons(buttons: List<CustomButtonSpec>) {
-        customButtons = buttons
+        MediaControlsService.persistedCustomButtons = buttons
     }
 
-    fun getCustomButtons(): List<CustomButtonSpec> = customButtons
+    fun getCustomButtons(): List<CustomButtonSpec> = MediaControlsService.persistedCustomButtons
 
     fun findCustomButton(actionId: String): CustomButtonSpec? =
-        customButtons.firstOrNull { it.actionId == actionId }
+        getCustomButtons().firstOrNull { it.actionId == actionId }
 
     fun isControlEnabled(controlName: Controls): Boolean {
         return enabledControls[controlName] ?: false

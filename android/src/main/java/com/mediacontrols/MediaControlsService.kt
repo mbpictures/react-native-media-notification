@@ -44,6 +44,8 @@ class MediaControlsService : MediaLibraryService() {
         const val CAR_DISCONNECTED_EVENT = "carDisconnected"
         var player: MediaControlsPlayer? = null
         val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
+
+        var persistedCustomButtons: List<CustomButtonSpec> = emptyList()
         var instance: MediaControlsService? = null
     }
 

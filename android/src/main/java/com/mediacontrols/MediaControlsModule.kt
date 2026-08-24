@@ -157,7 +157,7 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
         specs.add(CustomButtonSpec(eventId, icon, displayName))
       }
     }
-    MediaControlsService.player?.setCustomButtons(specs)
+    MediaControlsService.persistedCustomButtons = specs
     MediaControlsService.instance?.refreshAvailableCommands()
     MediaControlsService.instance?.updateCustomLayout()
   }
