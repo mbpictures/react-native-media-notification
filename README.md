@@ -361,10 +361,9 @@ Recommendations:
 
 > **iOS:** `setCustomButtons` is currently a no-op on iOS.
 
-### Playback Queue (Android Auto)
+### Playback Queue (Android Auto / CarPlay)
 
-Publish the tracks around the current one - already played and upcoming - so Android
-Auto can show them on its queue screen.
+Publish the tracks around the current one - already played and upcoming - so the car can show them as a playlist: the queue screen on Android Auto, "Up Next" on CarPlay.
 Selecting an entry emits `skipToQueueItem`; your player decides what actually plays.
 
 ```typescript
@@ -395,8 +394,6 @@ Notes:
 - If the same track is queued more than once, give each entry a distinct `queueId`.
 - If the current track (by `id`) is not in the queue, only the current track is shown.
 - Pass `[]` to clear the queue.
-
-> **iOS:** `setQueue` is currently a no-op on iOS.
 
 ## Planned
 - Full Android Auto Support (Headless Tasks, Voice Commands, Media Library)
@@ -433,7 +430,7 @@ listen for it via `addEventListener(eventId, handler)`. Pass `[]` to clear.
 
 #### `setQueue(items: QueueItem[], currentIndex?: number, title?: string): void`
 
-**Android only.** Publishes the playback queue to the Android Auto queue screen.
+Publishes the playback queue to Android Auto (queue screen) and CarPlay ("Up Next").
 The entry whose `id` matches the current track's metadata `id` is shown as playing;
 `currentIndex` picks between duplicates. Selecting an entry emits `skipToQueueItem`
 with `queueIndex` and `mediaId`. Pass `[]` to clear.
