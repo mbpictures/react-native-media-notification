@@ -109,7 +109,7 @@ export function setQueue(
 export interface CustomButton {
   /** Identifier emitted as the event command when this button is pressed. */
   eventId: string;
-  /** Drawable resource name (Android) used as the button icon. */
+  /** Button icon: drawable resource name (Android), asset catalog image or SF Symbol name (iOS). */
   icon: string;
   /** Optional display name shown next to the icon (e.g. in the Android Auto overflow menu). */
   displayName?: string;
@@ -117,7 +117,7 @@ export interface CustomButton {
 
 /**
  * Sets the list of custom buttons. On Android Auto these are placed in the
- * overflow ("burger") menu. When pressed, an event with `command === button.eventId`
+ * overflow ("burger") menu, on CarPlay on the Now Playing screen. When pressed, an event with `command === button.eventId`
  * is emitted via `addEventListener` / `foregroundEventHandler`.
  *
  * Pass an empty array to clear previously registered buttons.
