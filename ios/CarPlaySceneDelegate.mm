@@ -2,7 +2,10 @@
 #import "MediaLibraryStore.h"
 #import "MediaElement.h"
 
+#include <atomic>
+
 static const NSInteger kMaxTabs = 4;
+static const NSInteger kMaxNowPlayingButtons = 5;
 // How many already played tracks the Up Next list keeps above the current one
 // when the queue is longer than a list template may show.
 static const NSInteger kUpNextPreviousItems = 5;
@@ -29,10 +32,15 @@ static std::atomic<bool> _connected{false};
     _sharedInstance.interfaceController = interfaceController;
 
     [_sharedInstance buildAndSetRootTemplate];
+    [_sharedInstance applyCustomButtons];
 
     [[NSNotificationCenter defaultCenter] addObserver:_sharedInstance
                                              selector:@selector(onLibraryUpdated:)
                                                  name:MediaLibraryUpdatedNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:_sharedInstance
+                                             selector:@selector(onCustomButtonsUpdated:)
+                                                 name:MediaCustomButtonsUpdatedNotification
                                                object:nil];
 
     [[CPNowPlayingTemplate sharedTemplate] addObserver:_sharedInstance];
@@ -54,6 +62,9 @@ static std::atomic<bool> _connected{false};
                                                         name:MediaLibraryUpdatedNotification
                                                       object:nil];
         [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
+                                                        name:MediaCustomButtonsUpdatedNotification
+                                                      object:nil];
+        [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
                                                         name:MediaQueueUpdatedNotification
                                                       object:nil];
         [[CPNowPlayingTemplate sharedTemplate] removeObserver:_sharedInstance];
@@ -69,6 +80,55 @@ static std::atomic<bool> _connected{false};
     dispatch_async(dispatch_get_main_queue(), ^{
         [self buildAndSetRootTemplate];
     });
+}
+
+#pragma mark - Custom Buttons
+
+- (void)onCustomButtonsUpdated:(NSNotification *)notification {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self applyCustomButtons];
+    });
+}
+
+- (void)applyCustomButtons {
+    NSArray<MediaCustomButton *> *specs = [MediaLibraryStore sharedInstance].customButtons;
+    NSMutableArray<CPNowPlayingButton *> *buttons = [NSMutableArray array];
+
+    for (MediaCustomButton *spec in specs) {
+        if ((NSInteger)buttons.count >= kMaxNowPlayingButtons) {
+            break;
+        }
+
+        UIImage *image = [self imageForIconName:spec.icon];
+        if (!image) {
+            NSLog(@"[MediaControls] no image named '%@' for custom button '%@', skipping it",
+                  spec.icon, spec.eventId);
+            continue;
+        }
+
+        NSString *eventId = spec.eventId;
+        CPNowPlayingImageButton *button =
+            [[CPNowPlayingImageButton alloc] initWithImage:image
+                                                   handler:^(__kindof CPNowPlayingButton * _Nonnull sender) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:CarPlayCustomButtonPressedNotification
+                                                                    object:nil
+                                                                  userInfo:@{@"eventId": eventId}];
+            }];
+        [buttons addObject:button];
+    }
+
+    [[CPNowPlayingTemplate sharedTemplate] updateNowPlayingButtons:buttons];
+}
+
+- (UIImage *)imageForIconName:(NSString *)name {
+    if (name.length == 0) {
+        return nil;
+    }
+    UIImage *image = [UIImage imageNamed:name];
+    if (!image) {
+        image = [UIImage systemImageNamed:name];
+    }
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
 #pragma mark - Up Next

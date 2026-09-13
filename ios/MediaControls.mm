@@ -3,6 +3,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import "MediaElement.h"
 #import "MediaLibraryStore.h"
+#import "CarPlaySceneDelegate.h"
 
 @interface MediaControls ()
 @property (nonatomic, assign) BOOL audioInterruptionEnabled;
@@ -26,6 +27,7 @@ RCT_EXPORT_MODULE()
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioHardwareRouteChanged:) name:AVAudioSessionRouteChangeNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayItemSelected:) name:CarPlayItemSelectedNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayQueueItemSelected:) name:CarPlayQueueItemSelectedNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayCustomButtonPressed:) name:CarPlayCustomButtonPressedNotification object:nil];
         [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
     return self;
@@ -58,6 +60,15 @@ RCT_EXPORT_MODULE()
     data[@"mediaId"] = notification.userInfo[@"mediaId"];
 
     [self emitOnEvent:@{@"command": @"skipToQueueItem", @"data": data}];
+}
+
+- (void)onCarPlayCustomButtonPressed:(NSNotification *)notification {
+    NSString *eventId = notification.userInfo[@"eventId"];
+    if (![eventId isKindOfClass:[NSString class]] || eventId.length == 0) {
+        return;
+    }
+
+    [self emitOnEvent:@{@"command": eventId, @"data": @{}}];
 }
 
 - (NSArray<NSString *> *)supportedEvents {
@@ -236,7 +247,15 @@ RCT_EXPORT_METHOD(setMediaLibrary:(JS::NativeMediaControls::NativeLibraryItem &)
 }
 
 RCT_EXPORT_METHOD(setCustomButtons:(NSArray *)buttons) {
-    //TODO: implement for iOS (CarPlay overflow / Now Playing buttons)
+    NSMutableArray<MediaCustomButton *> *parsed = [NSMutableArray array];
+    for (id entry in buttons) {
+        MediaCustomButton *button = [MediaCustomButton fromDictionary:entry];
+        if (button) {
+            [parsed addObject:button];
+        }
+    }
+
+    [[MediaLibraryStore sharedInstance] setCustomButtons:parsed];
 }
 
 RCT_EXPORT_METHOD(setQueue:(NSArray *)items currentIndex:(double)currentIndex title:(NSString *)title) {
@@ -299,6 +318,7 @@ RCT_EXPORT_METHOD(shutdown) {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayItemSelectedNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayQueueItemSelectedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayCustomButtonPressedNotification object:nil];
 
 
     MPRemoteCommandCenter *remoteCenter = [MPRemoteCommandCenter sharedCommandCenter];

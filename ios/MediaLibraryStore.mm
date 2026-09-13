@@ -6,6 +6,28 @@ NSString *const MediaLibraryUpdatedNotification = @"MediaLibraryUpdated";
 NSString *const CarPlayItemSelectedNotification = @"CarPlayItemSelected";
 NSString *const MediaQueueUpdatedNotification = @"MediaQueueUpdated";
 NSString *const CarPlayQueueItemSelectedNotification = @"CarPlayQueueItemSelected";
+NSString *const MediaCustomButtonsUpdatedNotification = @"MediaCustomButtonsUpdated";
+NSString *const CarPlayCustomButtonPressedNotification = @"CarPlayCustomButtonPressed";
+
+@implementation MediaCustomButton
+
++ (nullable instancetype)fromDictionary:(NSDictionary *)dict {
+    if (![dict isKindOfClass:[NSDictionary class]]) {
+        return nil;
+    }
+    NSString *eventId = dict[@"eventId"];
+    if (![eventId isKindOfClass:[NSString class]] || eventId.length == 0) {
+        return nil;
+    }
+
+    MediaCustomButton *button = [[MediaCustomButton alloc] init];
+    button.eventId = eventId;
+    button.icon = [dict[@"icon"] isKindOfClass:[NSString class]] ? dict[@"icon"] : nil;
+    button.displayName = [dict[@"displayName"] isKindOfClass:[NSString class]] ? dict[@"displayName"] : nil;
+    return button;
+}
+
+@end
 
 @interface MediaLibraryStore ()
 // Guarded by @synchronized(self): written from the TurboModule queue, read by CarPlay on main.
@@ -22,6 +44,7 @@ NSString *const CarPlayQueueItemSelectedNotification = @"CarPlayQueueItemSelecte
     self = [super init];
     if (self) {
         _queueItems = @[];
+        _customButtons = @[];
     }
     return self;
 }
@@ -34,6 +57,15 @@ NSString *const CarPlayQueueItemSelectedNotification = @"CarPlayQueueItemSelecte
         [instance loadPersistedLibrary];
     });
     return instance;
+}
+
+- (void)setCustomButtons:(NSArray<MediaCustomButton *> *)buttons {
+    NSArray<MediaCustomButton *> *snapshot = [buttons copy] ?: @[];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_customButtons = snapshot;
+        [[NSNotificationCenter defaultCenter] postNotificationName:MediaCustomButtonsUpdatedNotification
+                                                            object:nil];
+    });
 }
 
 - (void)setLibrary:(MediaElement *)root {

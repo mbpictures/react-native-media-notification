@@ -6,12 +6,26 @@ extern NSString *const CarPlayItemSelectedNotification;
 extern NSString *const MediaQueueUpdatedNotification;
 // userInfo: @"queueIndex" (NSNumber), @"mediaId" (NSString)
 extern NSString *const CarPlayQueueItemSelectedNotification;
+extern NSString *const MediaCustomButtonsUpdatedNotification;
+extern NSString *const CarPlayCustomButtonPressedNotification;
 
 NS_ASSUME_NONNULL_BEGIN
+
+
+@interface MediaCustomButton : NSObject
+
+@property (nonatomic, strong) NSString *eventId;
+@property (nonatomic, strong, nullable) NSString *icon;
+@property (nonatomic, strong, nullable) NSString *displayName;
+
++ (nullable instancetype)fromDictionary:(NSDictionary *)dict;
+
+@end
 
 @interface MediaLibraryStore : NSObject
 
 @property (nonatomic, strong, nullable) MediaElement *rootElement;
+@property (nonatomic, copy) NSArray<MediaCustomButton *> *customButtons;
 
 + (instancetype)sharedInstance;
 - (void)setLibrary:(MediaElement *)root;
