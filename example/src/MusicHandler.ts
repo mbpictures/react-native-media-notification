@@ -50,6 +50,18 @@ const init = () => {
   MediaControls.setControlEnabled('seekBackward', true);
   MediaControls.setControlEnabled('stop', true);
 
+  MediaControls.setQueue(
+    tracks.map((track, index) => ({
+      id: `track-${index}`,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      artwork: track.artwork,
+    })),
+    currentTrackIndex,
+    'Queue'
+  );
+
   Sound.setCategory('Playback', true);
   initialized = true;
 };
@@ -170,6 +182,12 @@ export const backgroundMusicHandler = async (event: BackgroundEvent) => {
         const newPosition = Math.max(position - 15, 0);
         sound?.setCurrentTime(newPosition);
       });
+      break;
+    case 'skipToQueueItem':
+      if (event.data.queueIndex !== undefined) {
+        loadTrack(event.data.queueIndex);
+        setPlaying(true);
+      }
       break;
     case 'setMediaItems':
       if (event.data.mediaItems && event.data.mediaItems.length > 0) {
