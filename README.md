@@ -314,20 +314,29 @@ MediaControls.addEventListener('carDisconnected', () => {}); // head unit gone
 await MediaControls.stopMediaNotification();
 ```
 
-### Custom Buttons (Android Auto burger menu)
+### Custom Buttons (Android Auto burger menu / CarPlay Now Playing)
 
-Register additional buttons that appear in the Android Auto overflow ("burger") menu.
+Register additional buttons that appear in the Android Auto overflow ("burger") menu
+and on the CarPlay Now Playing screen.
 When pressed, an event with `command === button.eventId` is emitted, so you can listen
 for it through `addEventListener` (or your foreground/background event handler).
 
 ```typescript
 MediaControls.setCustomButtons([
-  { eventId: 'like',    icon: 'ic_thumb_up',   displayName: 'Like' },
-  { eventId: 'dislike', icon: 'ic_thumb_down', displayName: 'Dislike' },
+  {
+    eventId: 'like',
+    icon: Platform.select({ ios: 'hand.thumbsup', default: 'ic_thumb_up' }),
+    displayName: 'Like',
+  },
+  {
+    eventId: 'dislike',
+    icon: Platform.select({ ios: 'hand.thumbsdown', default: 'ic_thumb_down' }),
+    displayName: 'Dislike',
+  },
 ]);
 
 const sub = MediaControls.addEventListener('like', () => {
-  console.log('Like pressed from Android Auto');
+  console.log('Like pressed from the car');
 });
 
 // Pass an empty array to clear previously registered buttons:
@@ -359,7 +368,18 @@ Recommendations:
 - If the drawable cannot be resolved at runtime the button is silently skipped, so
   double-check the resource name.
 
-> **iOS:** `setCustomButtons` is currently a no-op on iOS.
+#### Configuring icons (iOS)
+
+On iOS `icon` is looked up as an image in your app's asset catalog first, then as an
+[SF Symbol](https://developer.apple.com/sf-symbols/) name (e.g. `hand.thumbsup`).
+
+Notes:
+- CarPlay shows at most **five** buttons; extra buttons are ignored.
+- Use a monochrome template image no larger than 40pt × 40pt
+  (`CPNowPlayingButtonMaximumImageSize`) — CarPlay tints it to match its theme.
+- `displayName` is not shown on CarPlay.
+- Buttons whose icon cannot be resolved are silently skipped.
+- The buttons only appear on CarPlay, not on the Lock Screen or in Control Center.
 
 ### Playback Queue (Android Auto / CarPlay)
 
@@ -424,9 +444,10 @@ Enable or disable audio interruption handling. When enabled, the media controls 
 
 #### `setCustomButtons(buttons: CustomButton[]): void`
 
-**Android only.** Registers extra buttons that appear in the Android Auto overflow
-("burger") menu. Pressing one emits an event with `command === button.eventId` —
-listen for it via `addEventListener(eventId, handler)`. Pass `[]` to clear.
+Registers extra buttons that appear in the Android Auto overflow ("burger") menu and
+on the CarPlay Now Playing screen (up to five). Pressing one emits an event with
+`command === button.eventId` — listen for it via `addEventListener(eventId, handler)`.
+Pass `[]` to clear.
 
 #### `setQueue(items: QueueItem[], currentIndex?: number, title?: string): void`
 
@@ -497,9 +518,9 @@ interface QueueItem {
 interface CustomButton {
   /** Identifier emitted as the event command when this button is pressed. */
   eventId: string;
-  /** Drawable resource name (Android) used as the button icon. */
+  /** Android: drawable resource name. iOS: asset catalog image or SF Symbol name. */
   icon: string;
-  /** Optional label shown next to the icon (e.g. in the Android Auto overflow menu). */
+  /** Optional label shown next to the icon (Android Auto overflow menu only). */
   displayName?: string;
 }
 ```
