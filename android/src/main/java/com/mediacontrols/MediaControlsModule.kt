@@ -162,6 +162,11 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     MediaControlsService.instance?.updateCustomLayout()
   }
 
+  override fun setQueue(items: ReadableArray?, currentIndex: Double, title: String?) {
+    MediaControlsService.persistedQueue = PlaybackQueue.from(items, currentIndex.toInt(), title)
+    MediaControlsService.player?.refreshQueue()
+  }
+
   @ReactMethod
   fun getControlsEnabled(promise: Promise) {
     try {

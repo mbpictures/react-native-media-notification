@@ -13,7 +13,8 @@ enum class Controls(val code: String) {
     UN_DUCK("unDuck"),
     SHUFFLE("shuffle"),
     REPEAT_MODE("repeatMode"),
-    SET_MEDIA_ITEMS("setMediaItems");
+    SET_MEDIA_ITEMS("setMediaItems"),
+    SKIP_TO_QUEUE_ITEM("skipToQueueItem");
 
     companion object {
         fun fromString(value: String): Controls? {
