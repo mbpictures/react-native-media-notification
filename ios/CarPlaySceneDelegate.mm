@@ -3,11 +3,15 @@
 #import "MediaElement.h"
 
 static const NSInteger kMaxTabs = 4;
+// How many already played tracks the Up Next list keeps above the current one
+// when the queue is longer than a list template may show.
+static const NSInteger kUpNextPreviousItems = 5;
 
 API_AVAILABLE(ios(14.0))
-@interface CarPlaySceneDelegate ()
+@interface CarPlaySceneDelegate () <CPNowPlayingTemplateObserver>
 
 @property (nonatomic, strong) CPInterfaceController *interfaceController;
+@property (nonatomic, strong, nullable) CPListTemplate *upNextTemplate;
 
 @end
 
@@ -28,6 +32,13 @@ static CarPlaySceneDelegate *_sharedInstance = nil;
                                              selector:@selector(onLibraryUpdated:)
                                                  name:MediaLibraryUpdatedNotification
                                                object:nil];
+
+    [[CPNowPlayingTemplate sharedTemplate] addObserver:_sharedInstance];
+    [_sharedInstance updateUpNextButton];
+    [[NSNotificationCenter defaultCenter] addObserver:_sharedInstance
+                                             selector:@selector(onQueueUpdated:)
+                                                 name:MediaQueueUpdatedNotification
+                                               object:nil];
 }
 
 + (void)disconnect {
@@ -35,6 +46,11 @@ static CarPlaySceneDelegate *_sharedInstance = nil;
         [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
                                                         name:MediaLibraryUpdatedNotification
                                                       object:nil];
+        [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
+                                                        name:MediaQueueUpdatedNotification
+                                                      object:nil];
+        [[CPNowPlayingTemplate sharedTemplate] removeObserver:_sharedInstance];
+        _sharedInstance.upNextTemplate = nil;
         _sharedInstance.interfaceController = nil;
         _sharedInstance = nil;
     }
@@ -46,6 +62,89 @@ static CarPlaySceneDelegate *_sharedInstance = nil;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self buildAndSetRootTemplate];
     });
+}
+
+#pragma mark - Up Next
+
+- (void)onQueueUpdated:(NSNotification *)notification {
+    // Posted on the main queue.
+    [self updateUpNextButton];
+
+    if (self.upNextTemplate && ![self.interfaceController.templates containsObject:self.upNextTemplate]) {
+        self.upNextTemplate = nil;
+    }
+    [self.upNextTemplate updateSections:[self buildUpNextSections]];
+}
+
+- (void)updateUpNextButton {
+    MediaLibraryStore *store = [MediaLibraryStore sharedInstance];
+    CPNowPlayingTemplate *nowPlaying = [CPNowPlayingTemplate sharedTemplate];
+    nowPlaying.upNextButtonEnabled = store.queue.count > 0;
+    NSString *title = store.queueTitle;
+    if (title.length > 0) {
+        nowPlaying.upNextTitle = title;
+    }
+}
+
+- (void)nowPlayingTemplateUpNextButtonTappedWithNowPlayingTemplate:(CPNowPlayingTemplate *)nowPlayingTemplate {
+    NSString *title = [MediaLibraryStore sharedInstance].queueTitle;
+    if (title.length == 0) {
+        title = nowPlayingTemplate.upNextTitle.length > 0 ? nowPlayingTemplate.upNextTitle : @"Up Next";
+    }
+
+    CPListTemplate *listTemplate = [[CPListTemplate alloc] initWithTitle:title
+                                                               sections:[self buildUpNextSections]];
+    self.upNextTemplate = listTemplate;
+    [self.interfaceController pushTemplate:listTemplate animated:YES completion:nil];
+}
+
+- (NSArray<CPListSection *> *)buildUpNextSections {
+    MediaLibraryStore *store = [MediaLibraryStore sharedInstance];
+    NSArray<MediaElement *> *queue = store.queue;
+    NSInteger currentIndex = [store currentQueueIndex];
+    NSInteger count = (NSInteger)queue.count;
+
+    // A list template may hold fewer items than the queue; show a window around the current track.
+    NSInteger limit = (NSInteger)MIN(CPListTemplate.maximumItemCount, (NSUInteger)count);
+    NSInteger anchor = currentIndex == NSNotFound ? 0 : currentIndex;
+    NSInteger start = MAX(0, MIN(anchor - kUpNextPreviousItems, count - limit));
+    NSInteger end = start + limit;
+
+    NSMutableArray<CPListItem *> *listItems = [NSMutableArray array];
+    for (NSInteger i = start; i < end; i++) {
+        MediaElement *element = queue[i];
+        CPListItem *item = [[CPListItem alloc] initWithText:element.title ?: @""
+                                                 detailText:element.artist];
+        item.playing = (i == currentIndex);
+
+        __weak CarPlaySceneDelegate *weakSelf = self;
+        NSInteger queueIndex = i;
+        NSString *mediaId = element.itemId ?: @"";
+
+        item.handler = ^(id<CPSelectableListItem> _Nonnull selectedItem, dispatch_block_t _Nonnull completionHandler) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:CarPlayQueueItemSelectedNotification
+                                                                object:nil
+                                                              userInfo:@{@"queueIndex": @(queueIndex),
+                                                                         @"mediaId": mediaId}];
+            // Back to Now Playing, like selecting a track in the system Music app.
+            [weakSelf.interfaceController popTemplateAnimated:YES completion:nil];
+            completionHandler();
+        };
+
+        if (element.artwork) {
+            [self loadArtworkFromURL:element.artwork completion:^(UIImage *image) {
+                if (image) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [item setImage:image];
+                    });
+                }
+            }];
+        }
+
+        [listItems addObject:item];
+    }
+
+    return @[[[CPListSection alloc] initWithItems:listItems]];
 }
 
 #pragma mark - Template Building

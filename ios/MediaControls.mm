@@ -25,6 +25,7 @@ RCT_EXPORT_MODULE()
         _audioInterruptionEnabled = NO;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioHardwareRouteChanged:) name:AVAudioSessionRouteChangeNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayItemSelected:) name:CarPlayItemSelectedNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onCarPlayQueueItemSelected:) name:CarPlayQueueItemSelectedNotification object:nil];
         [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
     return self;
@@ -48,8 +49,19 @@ RCT_EXPORT_MODULE()
     [self emitOnEvent:params];
 }
 
+- (void)onCarPlayQueueItemSelected:(NSNotification *)notification {
+    NSNumber *queueIndex = notification.userInfo[@"queueIndex"];
+    if (!queueIndex) return;
+
+    NSMutableDictionary *data = [NSMutableDictionary dictionary];
+    data[@"queueIndex"] = queueIndex;
+    data[@"mediaId"] = notification.userInfo[@"mediaId"];
+
+    [self emitOnEvent:@{@"command": @"skipToQueueItem", @"data": data}];
+}
+
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"play", @"pause", @"stop", @"skipToNext", @"skipToPrevious", @"seekForward", @"seekBackward", @"seek", @"setMediaItems"];
+    return @[@"play", @"pause", @"stop", @"skipToNext", @"skipToPrevious", @"seekForward", @"seekBackward", @"seek", @"setMediaItems", @"skipToQueueItem"];
 }
 
 #pragma mark - React Native Methods
@@ -135,6 +147,9 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
         if (metadata.isPlaying().has_value()) {
             nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = metadata.isPlaying().value() ? [NSNumber numberWithDouble:1] : [NSNumber numberWithDouble:0];
         }
+
+        NSInteger queueIndex = [[MediaLibraryStore sharedInstance] resolveQueueIndexForItemId:metadata.id_()];
+        [self applyQueueIndex:queueIndex toNowPlayingInfo:nowPlayingInfo];
 
 
         _nowPlayingCenter.nowPlayingInfo = nowPlayingInfo;
@@ -225,7 +240,28 @@ RCT_EXPORT_METHOD(setCustomButtons:(NSArray *)buttons) {
 }
 
 RCT_EXPORT_METHOD(setQueue:(NSArray *)items currentIndex:(double)currentIndex title:(NSString *)title) {
-    //TODO: implement for iOS (CarPlay "Up Next")
+    NSMutableArray<MediaElement *> *queue = [NSMutableArray arrayWithCapacity:items.count];
+    for (id obj in items) {
+        MediaElement *element = [MediaElement fromDictionary:obj];
+        if (!element) {
+            // Keep the slot so indices match the JS array.
+            element = [[MediaElement alloc] init];
+        }
+        NSString *itemId = [obj isKindOfClass:[NSDictionary class]] ? obj[@"id"] : nil;
+        element.itemId = [itemId isKindOfClass:[NSString class]] ? itemId : @"";
+        element.playable = YES;
+        [queue addObject:element];
+    }
+
+    MediaLibraryStore *store = [MediaLibraryStore sharedInstance];
+    [store setQueue:queue currentIndex:(NSInteger)currentIndex title:title];
+
+    MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
+    if (center.nowPlayingInfo) {
+        NSMutableDictionary *nowPlayingInfo = [center.nowPlayingInfo mutableCopy];
+        [self applyQueueIndex:[store currentQueueIndex] toNowPlayingInfo:nowPlayingInfo];
+        center.nowPlayingInfo = nowPlayingInfo;
+    }
 }
 
 RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSNumber *, isCarConnected) {
@@ -250,6 +286,7 @@ RCT_EXPORT_METHOD(shutdown) {
     _audioInterruptionEnabled = false;
     [[NSNotificationCenter defaultCenter] removeObserver:self name:AVAudioSessionRouteChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayItemSelectedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CarPlayQueueItemSelectedNotification object:nil];
 
 
     MPRemoteCommandCenter *remoteCenter = [MPRemoteCommandCenter sharedCommandCenter];
@@ -422,6 +459,16 @@ RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
 }
 
 #pragma mark - Helper Methods
+
+- (void)applyQueueIndex:(NSInteger)queueIndex toNowPlayingInfo:(NSMutableDictionary *)nowPlayingInfo {
+    if (queueIndex == NSNotFound) {
+        [nowPlayingInfo removeObjectForKey:MPNowPlayingInfoPropertyPlaybackQueueIndex];
+        [nowPlayingInfo removeObjectForKey:MPNowPlayingInfoPropertyPlaybackQueueCount];
+        return;
+    }
+    nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackQueueIndex] = @(queueIndex);
+    nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackQueueCount] = @([MediaLibraryStore sharedInstance].queue.count);
+}
 
 - (void)loadArtworkFromURL:(NSString *)urlString completion:(void (^)(UIImage *))completion {
     NSURL *url = [NSURL URLWithString:urlString];
