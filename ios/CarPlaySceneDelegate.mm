@@ -19,10 +19,12 @@ API_AVAILABLE(ios(14.0))
 @implementation CarPlaySceneDelegate
 
 static CarPlaySceneDelegate *_sharedInstance = nil;
+static std::atomic<bool> _connected{false};
 
 #pragma mark - Public API
 
 + (void)connectWithInterfaceController:(CPInterfaceController *)interfaceController {
+    _connected = true;
     _sharedInstance = [[CarPlaySceneDelegate alloc] init];
     _sharedInstance.interfaceController = interfaceController;
 
@@ -41,7 +43,12 @@ static CarPlaySceneDelegate *_sharedInstance = nil;
                                                object:nil];
 }
 
++ (BOOL)isConnected {
+    return _connected.load();
+}
+
 + (void)disconnect {
+    _connected = false;
     if (_sharedInstance) {
         [[NSNotificationCenter defaultCenter] removeObserver:_sharedInstance
                                                         name:MediaLibraryUpdatedNotification

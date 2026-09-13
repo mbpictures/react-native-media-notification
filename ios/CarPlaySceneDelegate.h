@@ -8,4 +8,6 @@ API_AVAILABLE(ios(14.0))
 + (void)connectWithInterfaceController:(CPInterfaceController *)interfaceController;
 + (void)disconnect;
 
++ (BOOL)isConnected;
+
 @end

@@ -265,7 +265,19 @@ RCT_EXPORT_METHOD(setQueue:(NSArray *)items currentIndex:(double)currentIndex ti
 }
 
 RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSNumber *, isCarConnected) {
-    // stub only
+    if (@available(iOS 14.0, *)) {
+        if ([CarPlaySceneDelegate isConnected]) {
+            return @YES;
+        }
+    }
+
+    AVAudioSessionRouteDescription *route = [AVAudioSession sharedInstance].currentRoute;
+    for (AVAudioSessionPortDescription *output in route.outputs) {
+        if ([output.portType isEqualToString:AVAudioSessionPortCarAudio]) {
+            return @YES;
+        }
+    }
+
     return @NO;
 }
 
