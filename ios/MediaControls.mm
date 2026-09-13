@@ -392,8 +392,15 @@ RCT_EXPORT_METHOD(enableAudioInterruption:(BOOL)enabled
 
 RCT_EXPORT_METHOD(enableBackgroundMode:(BOOL) enabled){
     AVAudioSession *session = [AVAudioSession sharedInstance];
-    [session setCategory: AVAudioSessionCategoryPlayback error: nil];
-    [session setActive: enabled error: nil];
+    NSError *categoryError = nil;
+    NSError *activeError = nil;
+    [session setCategory: AVAudioSessionCategoryPlayback error: &categoryError];
+    [session setActive: enabled error: &activeError];
+
+    if (categoryError != nil || activeError != nil) {
+        NSLog(@"[MediaControls] audio session not configured (enabled=%d): category=%@ active=%@",
+              enabled, categoryError, activeError);
+    }
 }
 
 - (MPRemoteCommandHandlerStatus)handlePlayCommand:(MPRemoteCommandEvent *)event {
