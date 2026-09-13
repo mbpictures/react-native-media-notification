@@ -437,8 +437,8 @@ with `queueIndex` and `mediaId`. Pass `[]` to clear.
 
 #### `isCarConnected(): boolean`
 
-**Android only** (always `false` on iOS). Whether Android Auto is attached right
-now. Unlike the `carConnected` / `carDisconnected` events, which only report the
+Whether a car is attached right now: Android Auto on Android, CarPlay on iOS.
+Unlike the `carConnected` / `carDisconnected` events, which only report the
 transition, this can be asked at any time, including when the app was launched
 with a car already connected.
 
