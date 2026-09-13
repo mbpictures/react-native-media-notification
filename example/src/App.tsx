@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Button, Text, StyleSheet } from 'react-native';
+import { View, Button, Text, StyleSheet, Platform } from 'react-native';
 import * as MediaControls from 'react-native-media-notification';
 import * as MusicHandler from './MusicHandler';
 
@@ -47,12 +47,12 @@ export default function App() {
     MediaControls.setCustomButtons([
       {
         eventId: 'like',
-        icon: 'react_icon',
+        icon: Platform.select({ ios: 'hand.thumbsup', default: 'react_icon' }),
         displayName: 'Like',
       },
     ]);
     const likeSub = MediaControls.addEventListener('like', () => {
-      console.log('Like button pressed from Android Auto overflow menu');
+      console.log('Like button pressed from the car');
     });
     const playingSub = MusicHandler.emitter.addListener(
       'playing',
