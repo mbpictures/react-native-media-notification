@@ -127,7 +127,7 @@ export function setCustomButtons(buttons: CustomButton[]): void {
 }
 
 /**
- * Whether Android Auto is attached right now. Always false on iOS.
+ * Whether a car is attached right now: Android Auto on Android, CarPlay on iOS.
  *
  * Answers at any moment, including when the app was launched with a car already
  * connected - the `carConnected` event only covers the transition.
