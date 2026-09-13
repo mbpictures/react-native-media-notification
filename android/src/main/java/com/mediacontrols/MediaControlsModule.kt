@@ -1,6 +1,5 @@
 package com.mediacontrols
 
-import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
@@ -122,15 +121,16 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
     Instance = null
   }
 
-  @SuppressLint("NewApi")
   override fun isCarConnected(): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-      // No route query before API 31, so fall back to the controller list.
-      return MediaControlsService.instance?.isCarConnected() ?: false
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+      // No route query before API 33, so fall back to the controller list.
+      return controllerListSaysCarConnected()
     }
     val audioManager =
-      reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
-    return try {
+      reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        ?: return controllerListSaysCarConnected()
+    // null means "no answer", which is not the same as "no car".
+    val routed: Boolean? = try {
       val attributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -138,9 +138,13 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
       audioManager.getAudioDevicesForAttributes(attributes)
         .any { it.type == AudioDeviceInfo.TYPE_REMOTE_SUBMIX }
     } catch (t: Throwable) {
-      false
+      null
     }
+    return routed ?: controllerListSaysCarConnected()
   }
+
+  private fun controllerListSaysCarConnected(): Boolean =
+    MediaControlsService.instance?.isCarConnected() ?: false
 
   override fun setMediaLibrary(library: ReadableMap?) {
     MediaStore.Instance.build(library)
