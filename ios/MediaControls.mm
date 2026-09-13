@@ -192,7 +192,21 @@ RCT_EXPORT_METHOD(updateMetadata:(JS::NativeMediaControls::NativeMediaTrackMetad
                 dispatch_async(dispatch_get_main_queue(), ^{
                     MPNowPlayingInfoCenter *center = [MPNowPlayingInfoCenter defaultCenter];
                     MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:image.size requestHandler:^UIImage * _Nonnull(CGSize size) {
-                        return image;
+                        if (CGSizeEqualToSize(size, image.size)) {
+                            return image;
+                        }
+
+                        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+                        format.opaque = NO;
+                        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
+                        return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+                            CGFloat ratio = MIN(size.width / image.size.width, size.height / image.size.height);
+                            CGSize drawSize = CGSizeMake(image.size.width * ratio, image.size.height * ratio);
+                            [image drawInRect:CGRectMake((size.width - drawSize.width) / 2.0,
+                                                         (size.height - drawSize.height) / 2.0,
+                                                         drawSize.width,
+                                                         drawSize.height)];
+                        }];
                     }];
                     NSMutableDictionary *mediaDict = (center.nowPlayingInfo != nil) ? [[NSMutableDictionary alloc] initWithDictionary: center.nowPlayingInfo] : [NSMutableDictionary dictionary];
                     [mediaDict setValue:artwork forKey:MPMediaItemPropertyArtwork];
