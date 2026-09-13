@@ -286,6 +286,9 @@ MediaControls.addEventListener('repeatMode', () => {});
 // Navigation
 MediaControls.addEventListener('skipToNext', () => {});
 MediaControls.addEventListener('skipToPrevious', () => {});
+MediaControls.addEventListener('skipToQueueItem', (data) => {
+  console.log('Queue entry selected:', data?.queueIndex, data?.mediaId);
+});
 
 // Seeking
 MediaControls.addEventListener('seekForward', () => {});
@@ -358,6 +361,43 @@ Recommendations:
 
 > **iOS:** `setCustomButtons` is currently a no-op on iOS.
 
+### Playback Queue (Android Auto)
+
+Publish the tracks around the current one - already played and upcoming - so Android
+Auto can show them on its queue screen.
+Selecting an entry emits `skipToQueueItem`; your player decides what actually plays.
+
+```typescript
+MediaControls.setQueue(
+  tracks.map((track) => ({
+    id: track.id, // must match the `id` passed to updateMetadata
+    title: track.title,
+    artist: track.artist,
+    artwork: track.artwork,
+    duration: track.duration,
+  })),
+  currentIndex,
+  'Queue' // optional title of the queue screen
+);
+
+MediaControls.addEventListener('skipToQueueItem', ({ queueIndex }) => {
+  player.skipTo(queueIndex);
+});
+
+// Keep calling updateMetadata({ id, ... }) as usual; the queue entry with the
+// same id is shown as playing.
+```
+
+Notes:
+- Pass the queue in the order it will actually play (already shuffled, if shuffle is on).
+- Call `setQueue` again whenever the queue changes; it does not need to be repeated on
+  every track change as long as the new track is part of the queue.
+- If the same track is queued more than once, give each entry a distinct `queueId`.
+- If the current track (by `id`) is not in the queue, only the current track is shown.
+- Pass `[]` to clear the queue.
+
+> **iOS:** `setQueue` is currently a no-op on iOS.
+
 ## Planned
 - Full Android Auto Support (Headless Tasks, Voice Commands, Media Library)
 - Add more actions/metadata information and better customization
@@ -390,6 +430,13 @@ Enable or disable audio interruption handling. When enabled, the media controls 
 **Android only.** Registers extra buttons that appear in the Android Auto overflow
 ("burger") menu. Pressing one emits an event with `command === button.eventId` —
 listen for it via `addEventListener(eventId, handler)`. Pass `[]` to clear.
+
+#### `setQueue(items: QueueItem[], currentIndex?: number, title?: string): void`
+
+**Android only.** Publishes the playback queue to the Android Auto queue screen.
+The entry whose `id` matches the current track's metadata `id` is shown as playing;
+`currentIndex` picks between duplicates. Selecting an entry emits `skipToQueueItem`
+with `queueIndex` and `mediaId`. Pass `[]` to clear.
 
 #### `isCarConnected(): boolean`
 
@@ -429,13 +476,26 @@ type MediaControlEvent =
   | 'stop'
   | 'skipToNext'
   | 'skipToPrevious'
+  | 'skipToQueueItem'
   | 'seekForward'
   | 'seekBackward'
   | 'seek';
 
 type MediaControlEventData = {
-  position?: number; // for seek events
+  position?: number;   // for seek events
+  queueIndex?: number; // for skipToQueueItem events
+  mediaId?: string;    // for skipToQueueItem events
 };
+
+interface QueueItem {
+  id: string;        // same id as passed to updateMetadata
+  queueId?: string;  // unique per entry, needed only for duplicates
+  title?: string;
+  artist?: string;
+  album?: string;
+  artwork?: string;  // URL
+  duration?: number; // in seconds
+}
 
 interface CustomButton {
   /** Identifier emitted as the event command when this button is pressed. */

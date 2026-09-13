@@ -4,6 +4,7 @@ import MediaControls, {
   type MediaControlEvent,
   type NativeCustomButton,
   type NativeLibraryItem,
+  type NativeQueueItem,
 } from './NativeMediaControls';
 import type { NativeMediaTrackMetadata } from './NativeMediaControls';
 import { EventEmitter, EventSubscription } from 'fbemitter';
@@ -43,6 +44,10 @@ export type MediaControlEventData = {
   mediaItems?: string[];
   shuffleMode?: boolean;
   repeatMode?: 'off' | 'one' | 'all';
+  /** Index into the array passed to {@link setQueue} (skipToQueueItem events). */
+  queueIndex?: number;
+  /** `id` of the selected queue item (skipToQueueItem events). */
+  mediaId?: string;
 };
 
 const eventEmitter = new EventEmitter();
@@ -75,6 +80,30 @@ export async function updateMetadata(
  */
 export function setMediaLibrary(library: LibraryItem) {
   return MediaControls.setMediaLibrary(library);
+}
+
+export interface QueueItem extends Omit<NativeQueueItem, 'artwork'> {
+  artwork?: string | ImageSourcePropType;
+}
+
+/**
+ * Publishes the playback queue - previously played and upcoming tracks - so
+ * Android Auto can show it as a playlist. Tapping an entry emits a
+ * `skipToQueueItem` event carrying `queueIndex` and `mediaId`.
+ *
+ * Pass an empty array to clear the queue.
+ */
+export function setQueue(
+  items: QueueItem[],
+  currentIndex: number = 0,
+  title?: string
+): void {
+  const nativeItems = items.map((item) =>
+    item.artwork && typeof item.artwork !== 'string'
+      ? { ...item, artwork: Image.resolveAssetSource(item.artwork).uri }
+      : item
+  );
+  MediaControls.setQueue(nativeItems, currentIndex, title ?? null);
 }
 
 export interface CustomButton {

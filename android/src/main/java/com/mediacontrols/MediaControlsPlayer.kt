@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.webkit.URLUtil
 import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -36,6 +37,11 @@ class MediaControlsPlayer(
 
     // Track metadata
     private var currentMetadata: MediaTrackMetadata? = null
+
+    // Queue the current playlist was built from; null while it holds only the current track.
+    @Volatile
+    private var publishedQueue: PlaybackQueue? = null
+    private var queueItemsCache: Pair<PlaybackQueue, List<MediaItemData>>? = null
 
     // Audio interruption
     private var audioInterruptionEnabled = false
@@ -106,13 +112,27 @@ class MediaControlsPlayer(
         positionMs: Long,
         seekCommand: Int
     ): ListenableFuture<*> {
-        updateState { builder ->
-            builder.setCurrentMediaItemIndex(mediaItemIndex)
-                .setContentPositionMs(positionMs)
+        val previousIndex = currentState.currentMediaItemIndex.coerceAtLeast(0)
+
+        // A seek Media3 ignores (e.g. next on the last queue entry) still lands here,
+        // with INDEX_UNSET, which would jump the displayed entry to the start of the queue.
+        // An index past the playlist would fail the state's validation.
+        if (mediaItemIndex in currentState.playlist.indices) {
+            updateState { builder ->
+                builder.setCurrentMediaItemIndex(mediaItemIndex)
+                    .setContentPositionMs(positionMs)
+            }
         }
 
         // Handle different seek commands
         when (seekCommand) {
+            Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {
+                if (mediaItemIndex == previousIndex && positionMs != C.TIME_UNSET) {
+                    emitSeekEvent(positionMs)
+                } else {
+                    emitSkipToQueueItem(mediaItemIndex)
+                }
+            }
             Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                 sendEvent(Controls.NEXT, null)
             }
@@ -154,7 +174,7 @@ class MediaControlsPlayer(
     }
 
     private fun acknowledgeSelection(mediaItems: List<MediaItem>, startIndex: Int) {
-        val index = if (startIndex == androidx.media3.common.C.INDEX_UNSET) 0 else startIndex
+        val index = if (startIndex == C.INDEX_UNSET) 0 else startIndex
         val picked = mediaItems.getOrNull(index) ?: return
         val mediaId = picked.mediaId
         if (mediaId.isEmpty() || mediaId == currentMetadata?.id) return
@@ -211,7 +231,8 @@ class MediaControlsPlayer(
             }
             .build()
 
-        val mediaId = metadata.id ?: "${metadata.title}_${metadata.artist}".replace(" ", "_")
+        val mediaId = this.currentMetadata!!.id
+            ?: "${this.currentMetadata!!.title}_${this.currentMetadata!!.artist}".replace(" ", "_")
 
         MediaStore.Instance.storeCurrentMediaId(mediaId)
 
@@ -229,18 +250,59 @@ class MediaControlsPlayer(
             .build()
 
         updateState { builder ->
-            builder.setPlaylist(listOf(mediaItemData))
-                .setCurrentMediaItemIndex(0)
+            builder.setPlaylistFor(mediaItemData)
                 .setContentPositionMs(this.currentMetadata!!.position?.times(1000)?.toLong() ?: 0)
                 .setPlayWhenReady(
                     this.currentMetadata!!.isPlaying ?: false,
                     Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
                 )
                 .setPlaybackState(if (loading) Player.STATE_BUFFERING else Player.STATE_READY)
-                .setAvailableCommands(state.availableCommands)
                 .setRepeatMode(this.currentMetadata!!.repeatMode)
                 .setShuffleModeEnabled(this.currentMetadata!!.shuffleMode)
         }
+    }
+
+    fun refreshQueue() {
+        val current = currentState.playlist
+            .getOrNull(currentState.currentMediaItemIndex.coerceAtLeast(0))
+            ?: return
+        updateState { builder -> builder.setPlaylistFor(current) }
+    }
+
+    private fun State.Builder.setPlaylistFor(current: MediaItemData): State.Builder {
+        val mediaId = current.mediaItem.mediaId
+        val queue = MediaControlsService.persistedQueue
+        val index = queue.resolveIndex(mediaId)
+
+        if (index == C.INDEX_UNSET) {
+            publishedQueue = null
+            return setPlaylist(listOf(current.buildUpon().setUid(mediaId).build()))
+                .setCurrentMediaItemIndex(0)
+                .setPlaylistMetadata(MediaMetadata.EMPTY)
+                .setAvailableCommands(getCommands(includeQueue = false))
+        }
+
+        val playlist = queueItems(queue).toMutableList()
+        playlist[index] = current.buildUpon().setUid(queue.entries[index].uid).build()
+        publishedQueue = queue
+        return setPlaylist(playlist)
+            .setCurrentMediaItemIndex(index)
+            .setAvailableCommands(getCommands(includeQueue = true))
+            .setPlaylistMetadata(MediaMetadata.Builder().setTitle(queue.title).build())
+    }
+
+    private fun queueItems(queue: PlaybackQueue): List<MediaItemData> {
+        queueItemsCache?.let { (cached, items) -> if (cached === queue) return items }
+        return queue.entries.map { it.toMediaItemData(context) }
+            .also { queueItemsCache = Pair(queue, it) }
+    }
+
+    private fun emitSkipToQueueItem(index: Int) {
+        val entry = publishedQueue?.entries?.getOrNull(index) ?: return
+        sendEvent(Controls.SKIP_TO_QUEUE_ITEM, Arguments.createMap().apply {
+            putInt("queueIndex", index)
+            putString("mediaId", entry.id)
+        })
     }
 
     private fun State.Builder.setRepeatMode(mode: String?): State.Builder {
@@ -289,7 +351,7 @@ class MediaControlsPlayer(
         enabledControls[controlName] = enabled
     }
 
-    fun getCommands(): Player.Commands {
+    fun getCommands(includeQueue: Boolean = false): Player.Commands {
         val availableCommands = mutableSetOf<Int>().apply {
             add(Player.COMMAND_PLAY_PAUSE)
             add(Player.COMMAND_STOP)
@@ -306,6 +368,11 @@ class MediaControlsPlayer(
             add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
             add(Player.COMMAND_GET_METADATA)
             add(Player.COMMAND_SET_MEDIA_ITEM)
+            if (includeQueue) {
+                // Both are required for Android Auto to show the queue and make entries selectable.
+                add(Player.COMMAND_GET_TIMELINE)
+                add(Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+            }
         }
         return Player.Commands.Builder().addAll(*availableCommands.toIntArray()).build()
     }

@@ -131,6 +131,9 @@ class MediaControlsService : MediaLibraryService() {
         val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
 
         var persistedCustomButtons: List<CustomButtonSpec> = emptyList()
+
+        @Volatile
+        var persistedQueue: PlaybackQueue = PlaybackQueue()
         var instance: MediaControlsService? = null
     }
 

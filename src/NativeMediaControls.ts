@@ -25,6 +25,7 @@ export type MediaControlEvent =
   | 'duck'
   | 'unDuck'
   | 'setMediaItems'
+  | 'skipToQueueItem'
   | 'carConnected'
   | 'carDisconnected';
 
@@ -61,6 +62,16 @@ export interface NativeLibraryItem {
   items?: UnsafeObject[];
 }
 
+export interface NativeQueueItem {
+  id: string;
+  queueId?: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  artwork?: string;
+  duration?: number;
+}
+
 export interface NativeCustomButton {
   eventId: string;
   icon: string;
@@ -83,6 +94,12 @@ export interface Spec extends TurboModule {
   setMediaLibrary(library: NativeLibraryItem): void;
 
   setCustomButtons(buttons: UnsafeObject[]): void;
+
+  setQueue(
+    items: UnsafeObject[],
+    currentIndex: number,
+    title: string | null
+  ): void;
 
   isCarConnected(): boolean;
   // Event listeners (native events will be emitted)

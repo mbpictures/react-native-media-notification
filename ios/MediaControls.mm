@@ -224,6 +224,10 @@ RCT_EXPORT_METHOD(setCustomButtons:(NSArray *)buttons) {
     //TODO: implement for iOS (CarPlay overflow / Now Playing buttons)
 }
 
+RCT_EXPORT_METHOD(setQueue:(NSArray *)items currentIndex:(double)currentIndex title:(NSString *)title) {
+    //TODO: implement for iOS (CarPlay "Up Next")
+}
+
 RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSNumber *, isCarConnected) {
     // stub only
     return @NO;
