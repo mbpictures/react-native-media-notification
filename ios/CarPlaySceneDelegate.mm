@@ -153,7 +153,7 @@ static std::atomic<bool> _connected{false};
     }
 }
 
-- (void)nowPlayingTemplateUpNextButtonTappedWithNowPlayingTemplate:(CPNowPlayingTemplate *)nowPlayingTemplate {
+- (void)nowPlayingTemplateUpNextButtonTapped:(CPNowPlayingTemplate *)nowPlayingTemplate {
     NSString *title = [MediaLibraryStore sharedInstance].queueTitle;
     if (title.length == 0) {
         title = nowPlayingTemplate.upNextTitle.length > 0 ? nowPlayingTemplate.upNextTitle : @"Up Next";
