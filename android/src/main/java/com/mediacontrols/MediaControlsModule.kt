@@ -105,7 +105,13 @@ class MediaControlsModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   override fun enableAudioInterruption(enabled: Boolean, promise: Promise) {
     try {
-      MediaControlsService.player?.setAudioInterruptionEnabled(enabled)
+      val player = MediaControlsService.player
+      if (player != null) {
+        player.setAudioInterruptionEnabled(enabled)
+      } else {
+        // Applied by the next player, which reads it from the service.
+        MediaControlsService.persistedAudioInterruptionEnabled = enabled
+      }
       promise.resolve(null)
     } catch (e: Exception) {
       promise.reject("AUDIO_INTERRUPTION_ERROR", "Failed to enable audio interruption: ${e.message}", e)

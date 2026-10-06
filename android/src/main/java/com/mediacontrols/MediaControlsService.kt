@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -18,6 +19,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
@@ -58,7 +60,12 @@ class MediaControlsService : MediaLibraryService() {
 
     private var deviceCallbackRegistered = false
     private val outputDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+            scheduleProjectionCheck()
+        }
+
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+            scheduleProjectionCheck()
             if (removedDevices == null || !removedDevices.any { isRemoteSink(it) }) return
             // A handover between two external outputs is not an output loss.
             if (remoteSinkStillPresent()) return
@@ -101,6 +108,40 @@ class MediaControlsService : MediaLibraryService() {
         }
     }
 
+    private var mediaProjected = false
+    private val projectionHandler = Handler(Looper.getMainLooper())
+    private val projectionCheck = Runnable { checkProjectionLoss() }
+
+    private fun scheduleProjectionCheck() {
+        projectionHandler.removeCallbacks(projectionCheck)
+        PROJECTION_CHECK_DELAYS_MS.forEach { projectionHandler.postDelayed(projectionCheck, it) }
+    }
+
+    private fun checkProjectionLoss() {
+        val projected = isMediaProjected() ?: return
+        val wasProjected = mediaProjected
+        mediaProjected = projected
+        if (wasProjected && !projected) {
+            Log.i(TAG, "Media left the remote submix (car disconnected), pausing")
+            pauseForOutputLoss()
+        }
+    }
+
+    private fun isMediaProjected(): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
+        val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return null
+        return try {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            am.getAudioDevicesForAttributes(attributes)
+                .any { it.type == AudioDeviceInfo.TYPE_REMOTE_SUBMIX }
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
     @Volatile
     private var lastOutputLossPauseAt = 0L
 
@@ -119,7 +160,9 @@ class MediaControlsService : MediaLibraryService() {
     }
 
     companion object {
+        private const val TAG = "MediaControlsService"
         private const val OUTPUT_LOSS_DEBOUNCE_MS = 2000L
+        private val PROJECTION_CHECK_DELAYS_MS = longArrayOf(0L, 500L, 1500L)
 
         private const val CHANNEL_ID = "media_controls_channel"
 
@@ -129,6 +172,8 @@ class MediaControlsService : MediaLibraryService() {
         const val CAR_DISCONNECTED_EVENT = "carDisconnected"
         var player: MediaControlsPlayer? = null
         val persistedEnabledControls = mutableMapOf<Controls, Boolean>()
+        @Volatile
+        var persistedAudioInterruptionEnabled = false
 
         var persistedCustomButtons: List<CustomButtonSpec> = emptyList()
 
@@ -326,6 +371,7 @@ class MediaControlsService : MediaLibraryService() {
             } catch (ignored: Exception) {}
             deviceCallbackRegistered = false
         }
+        projectionHandler.removeCallbacks(projectionCheck)
 
         mediaController?.runCatching { release() }
         mediaController = null
