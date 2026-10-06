@@ -53,6 +53,15 @@ class MediaStore {
         val rootId = mediaItemsHierarchy?.id ?: "root"
 
         onMediaItemsUpdated(rootId, itemCount(rootId))
+        fun notifyFolders(element: MediaElement) {
+            element.items?.forEach { child ->
+                if (child.browsable == true) {
+                    onMediaItemsUpdated(child.id, child.items?.size ?: 0)
+                    notifyFolders(child)
+                }
+            }
+        }
+        mediaItemsHierarchy?.let { notifyFolders(it) }
     }
 
     fun storeCurrentMediaId(id: String?) {
@@ -123,8 +132,15 @@ class MediaStore {
         if (mediaItemsHierarchy == null) return LibraryResult.ofItemList(emptyList(), null)
         val words = this.buildWordList(query)
 
-        val results = searchElements(mediaItemsHierarchy!!, words)
+        val results = distinctSongs(searchElements(mediaItemsHierarchy!!, words))
         return LibraryResult.ofItemList(results.paginate(page, pageSize).map { buildMediaItem(it) }, null)
+    }
+
+    // A song can be in several lists (e.g. its library and a playlist), each a
+    // separate element with its own id; search lists it once.
+    private fun distinctSongs(elements: List<MediaElement>): List<MediaElement> {
+        val seen = HashSet<Pair<String?, String?>>()
+        return elements.filter { it.playable != true || seen.add(Pair(it.title, it.artist)) }
     }
 
     fun resolveSearch(query: String): List<MediaItem> {
@@ -144,9 +160,8 @@ class MediaStore {
         }
         visit(hierarchy)
 
-        return scored
-            .sortedByDescending { it.first }
-            .map { buildMediaItem(it.second) }
+        return distinctSongs(scored.sortedByDescending { it.first }.map { it.second })
+            .map { buildMediaItem(it) }
     }
 
     private fun scoreElement(element: MediaElement, phrase: String, words: List<String>): Int {
@@ -166,7 +181,7 @@ class MediaStore {
         if (mediaItemsHierarchy == null) return 0
         val words = this.buildWordList(query)
 
-        val results = searchElements(mediaItemsHierarchy!!, words)
+        val results = distinctSongs(searchElements(mediaItemsHierarchy!!, words))
         return results.size
     }
 

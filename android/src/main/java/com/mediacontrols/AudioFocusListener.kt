@@ -29,14 +29,14 @@ class AudioFocusListener(
             abandonAudioFocus()
             mPlayOnAudioFocus = false
             Handler(player.applicationLooper).post {
-                if (player.isPlaying) {
+                if (player.playWhenReady) {
                     player.sendEvent(Controls.PAUSE, null)
                 }
             }
         } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             hasFocus = false
             Handler(player.applicationLooper).post {
-                if (player.isPlaying) {
+                if (player.playWhenReady) {
                     mPlayOnAudioFocus = true
                     expectSelfPause = true
                     player.sendEvent(Controls.PAUSE, null)

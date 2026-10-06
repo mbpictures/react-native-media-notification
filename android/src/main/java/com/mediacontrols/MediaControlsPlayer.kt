@@ -44,7 +44,8 @@ class MediaControlsPlayer(
     private var queueItemsCache: Pair<PlaybackQueue, List<MediaItemData>>? = null
 
     // Audio interruption
-    private var audioInterruptionEnabled = false
+    private val audioInterruptionEnabled: Boolean
+        get() = MediaControlsService.persistedAudioInterruptionEnabled
 
     private var audioFocusListener = AudioFocusListener(context, this)
 
@@ -421,7 +422,7 @@ class MediaControlsPlayer(
 
     fun setAudioInterruptionEnabled(enabled: Boolean) {
         if (audioInterruptionEnabled == enabled) return
-        audioInterruptionEnabled = enabled
+        MediaControlsService.persistedAudioInterruptionEnabled = enabled
 
         // Focus is requested lazily when playback starts, in
         // handleSetPlayWhenReady / updateMetadata. Requesting it here would take
